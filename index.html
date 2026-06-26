@@ -953,6 +953,7 @@ body { background: var(--bg); color: var(--text); font-family: "Archivo", sans-s
         <input type="hidden" id="as-emd-pretty" name="emdPretty">
         <input type="hidden" id="as-emd-deadline-pretty" name="emdDeadlinePretty">
         <input type="hidden" id="as-price-pretty" name="pricePretty">
+        <input type="hidden" id="as-handoff-field" name="_handoffUrl">
 
         <div class="da-actions">
           <button type="submit" class="da-submit" id="as-submit">Send to TC &rarr;</button>
@@ -1469,6 +1470,41 @@ function goSection(btn, id) {
     return 'Assignment Needed - ' + tail;
   }
 
+  // UTF-8 safe base64url (matches the decoder in handoff.html)
+  function b64urlEncode(str){
+    const b64 = btoa(unescape(encodeURIComponent(str)));
+    return b64.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  }
+
+  function buildHandoffUrl(){
+    const v = id => el(id).value.trim();
+    const mgr = el('as-acq-val').value, mgrEmail = el('as-acq-email').value;
+    const fields = [
+      ['Dispo Manager',  mgr + (mgrEmail ? ' (' + mgrEmail + ')' : '')],
+      ['Assignee Name',  v('as-assignee')],
+      ['Assignee Email', v('as-email')],
+      ['Assignee LLC',   v('as-llc')],
+      ['Address',        v('as-address')],
+      ['Title Company',  v('as-title')],
+      ['COE',            fmtDate(v('as-coe'))],
+      ['Earnest Money',  v('as-emd')   ? '$' + v('as-emd')   : ''],
+      ['EMD Deadline',   fmtDeadline(v('as-emd-deadline'), stateFromAddress())],
+      ['Assigned Price', v('as-price') ? '$' + v('as-price') : '']
+    ];
+    const contractName = (el('as-file-name-field').value || '').trim();
+    fields.push(['Original Contract', contractName ? contractName + (pickedRedacted ? ' (redacted copy attached)' : ' (original, not redacted)') : 'not provided']);
+    const notes = v('as-notes');
+    if(notes) fields.push(['Additional Terms', notes]);
+    const payload = {
+      t: 'ASSIGNMENT INTAKE',
+      title: v('as-address') || 'Assignment',
+      at: new Date().toLocaleString(),
+      fields: fields
+    };
+    const base = location.href.split('#')[0].replace(/[^/]*$/, '') + 'handoff.html';
+    return base + '#' + b64urlEncode(JSON.stringify(payload));
+  }
+
   let submitted = false;
   el('as-sink').addEventListener('load', ()=>{ if(submitted) showSuccess(true); });
 
@@ -1496,6 +1532,7 @@ function goSection(btn, id) {
       el('as-emd-pretty').value          = vv('as-emd')   ? '$' + vv('as-emd')   : '';
       el('as-emd-deadline-pretty').value = fmtDeadline(vv('as-emd-deadline'), stateFromAddress());
       el('as-price-pretty').value        = vv('as-price') ? '$' + vv('as-price') : '';
+      el('as-handoff-field').value       = buildHandoffUrl();
       if(ASSIGN_SCRIPT_URL){
         el('as-submit').disabled = true;
         el('as-submit').textContent = 'Sending…';
