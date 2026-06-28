@@ -937,8 +937,11 @@ body { background: var(--bg); color: var(--text); font-family: "Archivo", sans-s
               <span class="da-snips-label">Quick add:</span>
               <button type="button" class="as-snip" data-snip="vacant">Vacant at COE</button>
               <button type="button" class="as-snip" data-snip="postposs">Post-Possession</button>
+              <button type="button" class="as-snip" data-snip="failperform">Failure to Perform</button>
             </div>
-            <textarea class="da-textarea" id="as-notes" name="notes" placeholder="Seller is a trust, COE flexible, repairs credited, etc.">- Property to be Vacant upon Close of Escrow</textarea>
+            <textarea class="da-textarea" id="as-notes" name="notes" placeholder="Seller is a trust, COE flexible, repairs credited, etc.">- Property to be Vacant upon Close of Escrow
+
+- If seller fails to perform or close the sale of the property or does not abide by the guidelines in the purchase agreement in any way the earnest money shall be refunded to the buyer. An executed mutual release signed by both parties will not be required to complete the return of the earnest money deposit. In the event the buyer does not follow the guidelines of the purchase agreement or fails to perform on the terms outlined in this assignment agreement then the earnest money will be released to the Assignor.</textarea>
             <div class="da-err-msg"></div>
           </div>
         </div>
@@ -1309,6 +1312,7 @@ function goSection(btn, id) {
 
   // Quick-add verbiage for Additional Terms
   const SNIPPETS = {
+    failperform: { text: "- If seller fails to perform or close the sale of the property or does not abide by the guidelines in the purchase agreement in any way the earnest money shall be refunded to the buyer. An executed mutual release signed by both parties will not be required to complete the return of the earnest money deposit. In the event the buyer does not follow the guidelines of the purchase agreement or fails to perform on the terms outlined in this assignment agreement then the earnest money will be released to the Assignor.", sig: "If seller fails to perform", toggle: true },
     vacant:   { text: "- Property to be Vacant upon Close of Escrow", sig: "Property to be Vacant upon Close of Escrow", toggle: true },
     postposs: { text: "- Buyer agrees to give the Seller a ___ day post-possession with a $_____ Holdback. If the property is not vacant within the Final Day of the Post-Possession, The holdback will be transferred to the Buyer.", sig: "Buyer agrees to give the Seller a", toggle: true }
   };
