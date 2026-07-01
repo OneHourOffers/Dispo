@@ -861,6 +861,26 @@ body { background: var(--bg); color: var(--text); font-family: "Archivo", sans-s
             <input class="da-input" id="as-llc" name="assigneeLlc" type="text" autocomplete="off" placeholder="Buyer's LLC / entity, exactly as it should appear">
             <div class="da-err-msg">Enter the assignee LLC.</div>
           </div>
+
+          <div class="da-check-row">
+            <label class="da-check">
+              <input type="checkbox" id="as-add2">
+              Add a second signer <span class="da-check-sub">— co-buyer who also signs the assignment</span>
+            </label>
+          </div>
+
+          <div class="da-signer2" id="as-signer2">
+            <div class="da-field">
+              <label class="da-label" for="as-assignee2">Second Signer Name <span class="req">*</span></label>
+              <input class="da-input" id="as-assignee2" name="assignee2" type="text" autocomplete="off" placeholder="Full legal name of the co-signer">
+              <div class="da-err-msg">Enter the second signer's name.</div>
+            </div>
+            <div class="da-field">
+              <label class="da-label" for="as-email2">Second Signer Email <span class="req">*</span></label>
+              <input class="da-input" id="as-email2" name="assignee2Email" type="email" autocomplete="off" placeholder="cosigner@email.com">
+              <div class="da-err-msg">Enter a valid email.</div>
+            </div>
+          </div>
         </div>
 
         <div class="da-divider"></div>
@@ -1062,6 +1082,21 @@ function goSection(btn, id) {
       m.value = isNaN(v) ? '' : fmtMoney(v);
     });
   });
+
+  // second signer toggle
+  const add2 = el('as-add2'), signer2 = el('as-signer2');
+  function setSigner2(on){
+    signer2.classList.toggle('show', on);
+    if(!on){
+      ['as-assignee2','as-email2'].forEach(idv=>{
+        const inp = el(idv);
+        inp.value = '';
+        inp.classList.remove('err');
+        inp.closest('.da-field').classList.remove('show-err');
+      });
+    }
+  }
+  add2.addEventListener('change', ()=> setSigner2(add2.checked));
 
   /* === Address autocomplete (Photon / OpenStreetMap — free, no key) === */
   const addrEl = el('as-address'), acList = el('as-ac-list');
@@ -1385,6 +1420,16 @@ function goSection(btn, id) {
       if(bad && !firstBad) firstBad = inp;
       if(bad) ok = false;
     });
+    if(add2.checked){
+      [['as-assignee2', false], ['as-email2', true]].forEach(pair=>{
+        const inp = el(pair[0]), wrap = inp.closest('.da-field'), val = inp.value.trim();
+        const bad = !val || (pair[1] && !emailRe.test(val));
+        wrap.classList.toggle('show-err', bad);
+        inp.classList.toggle('err', bad);
+        if(bad && !firstBad) firstBad = inp;
+        if(bad) ok = false;
+      });
+    }
     if(firstBad) firstBad.focus();
     return ok;
   }
@@ -1446,6 +1491,10 @@ function goSection(btn, id) {
     lines.push('Assignee Name - '  + v('as-assignee'));
     lines.push('Assignee Email - ' + v('as-email'));
     lines.push('Assignee LLC - '   + v('as-llc'));
+    if(el('as-add2').checked){
+      lines.push('Assignee 2 Name - '  + v('as-assignee2'));
+      lines.push('Assignee 2 Email - ' + v('as-email2'));
+    }
     lines.push('Address - '        + v('as-address'));
     lines.push('Title Company - '  + v('as-title'));
     lines.push('COE - '            + fmtDate(v('as-coe')));
@@ -1496,6 +1545,12 @@ function goSection(btn, id) {
       ['Assigned Price', v('as-price') ? '$' + v('as-price') : '']
     ];
     const contractName = (el('as-file-name-field').value || '').trim();
+    if(el('as-add2').checked){
+      fields.splice(4, 0,
+        ['Assignee 2 Name',  v('as-assignee2')],
+        ['Assignee 2 Email', v('as-email2')]
+      );
+    }
     fields.push(['Original Contract', contractName ? contractName + (pickedRedacted ? ' (redacted copy attached)' : ' (original, not redacted)') : 'not provided']);
     const notes = v('as-notes');
     if(notes) fields.push(['Additional Terms', notes]);
@@ -1574,6 +1629,7 @@ function goSection(btn, id) {
   function resetForm(){
     form.reset();
     selectDefaultAcq();
+    setSigner2(false);
     acClose();
     if(typeof tcClose === 'function') tcClose();
     if(typeof clearContract === 'function') clearContract();
