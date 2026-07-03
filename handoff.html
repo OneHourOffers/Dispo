@@ -71,6 +71,17 @@
   .copy-btn:hover{background:#fbdedb;}
   .copy-btn:active{transform:scale(.95);}
   .copy-btn.done{background:var(--coral); color:#fff; border-color:var(--coral);}
+  .copy-group{
+    display:block; margin:14px 26px 4px;
+    background:var(--coral-dim); color:var(--coral-dark);
+    border:1px dashed #f6cfca; border-radius:9px;
+    padding:10px 12px; font-family:inherit; font-size:12.5px; font-weight:600;
+    cursor:pointer; text-align:center;
+    transition:background .15s, color .15s, border-color .15s, transform .08s;
+  }
+  .copy-group:hover{background:#fbdedb;}
+  .copy-group:active{transform:scale(.99);}
+  .copy-group.done{background:var(--coral); color:#fff; border-color:var(--coral);}
   .err{padding:48px 26px; text-align:center; color:var(--text-muted); font-size:15px;}
   .err strong{display:block; color:var(--navy); font-family:"Archivo",sans-serif; font-size:18px; margin-bottom:8px;}
   .foot{text-align:center; font-size:12px; color:var(--text-muted); margin-top:18px;}
@@ -128,6 +139,19 @@
     const fields = data.fields.filter(f => Array.isArray(f) && f.length >= 2);
     const allText = fields.map(f => f[0] + ' - ' + f[1]).join('\n');
 
+    // group-copy: the whole assignee (name + email + LLC + phone), excluding any second signer
+    const fieldMap = {};
+    fields.forEach(f => { fieldMap[f[0]] = f[1]; });
+    const assigneeBlock = () => {
+      const order = ['Assignee Name','Assignee Email','Assignee LLC','Phone'];
+      const out = [];
+      order.forEach(label => {
+        const val = fieldMap[label];
+        if(val != null && String(val).trim() !== '') out.push(label + ' - ' + String(val).trim());
+      });
+      return out.join('\n');
+    };
+
     let html = '';
     html += '<div class="head">';
     html +=   '<div class="eyebrow">' + esc(data.t || 'ASSIGNMENT INTAKE') + '</div>';
@@ -139,6 +163,9 @@
     fields.forEach((f, i) => {
       const val = (f[1] === '' || f[1] == null) ? '—' : f[1];
       const isEmpty = (f[1] === '' || f[1] == null);
+      if(f[0] === 'Assignee Name'){
+        html += '<button class="copy-group" id="copy-assignee">Copy entire assignee</button>';
+      }
       html += '<div class="row">';
       html +=   '<div class="row-main">';
       html +=     '<div class="row-label">' + esc(f[0]) + '</div>';
@@ -153,6 +180,10 @@
     document.getElementById('copy-all').addEventListener('click', e => {
       copyText(allText, e.currentTarget, copyIcon + 'Copied!');
     });
+    const grpBtn = document.getElementById('copy-assignee');
+    if(grpBtn){
+      grpBtn.addEventListener('click', () => copyText(assigneeBlock(), grpBtn, 'Copied!'));
+    }
     card.querySelectorAll('.copy-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const f = fields[parseInt(btn.dataset.i,10)];

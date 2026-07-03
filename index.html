@@ -856,10 +856,15 @@ body { background: var(--bg); color: var(--text); font-family: "Archivo", sans-s
             <input class="da-input" id="as-email" name="assigneeEmail" type="email" autocomplete="off" placeholder="assignee@email.com">
             <div class="da-err-msg">Enter a valid email.</div>
           </div>
-          <div class="da-field full">
+          <div class="da-field">
             <label class="da-label" for="as-llc">Assignee LLC <span class="req">*</span><span class="da-hint">entity taking the assignment</span></label>
             <input class="da-input" id="as-llc" name="assigneeLlc" type="text" autocomplete="off" placeholder="Buyer's LLC / entity, exactly as it should appear">
             <div class="da-err-msg">Enter the assignee LLC.</div>
+          </div>
+          <div class="da-field">
+            <label class="da-label" for="as-phone">Phone <span class="req">*</span></label>
+            <input class="da-input" id="as-phone" name="phone" type="tel" inputmode="numeric" autocomplete="off" placeholder="(555) 555-5555">
+            <div class="da-err-msg">Enter a 10-digit phone number.</div>
           </div>
 
           <div class="da-check-row">
@@ -1064,6 +1069,7 @@ function goSection(btn, id) {
     {id:'as-assignee',     key:'Assignee Name',  req:true},
     {id:'as-email',        key:'Assignee Email', req:true, email:true},
     {id:'as-llc',          key:'Assignee LLC',   req:true},
+    {id:'as-phone',        key:'Phone',          req:true, phone:true},
     {id:'as-address',      key:'Address',        req:true},
     {id:'as-title',        key:'Title Company',  req:true},
     {id:'as-coe',          key:'COE',            req:true},
@@ -1081,6 +1087,19 @@ function goSection(btn, id) {
       const v = parseMoney(m.value);
       m.value = isNaN(v) ? '' : fmtMoney(v);
     });
+  });
+
+  // Phone: auto-format to (xxx) xxx-xxxx as the user types
+  const phoneEl = el('as-phone');
+  phoneEl.addEventListener('input', ()=>{
+    let d = phoneEl.value.replace(/\D/g, '');
+    if (d.length > 10 && d[0] === '1') d = d.slice(1); // tolerate a leading country code
+    d = d.slice(0, 10);
+    let out = '';
+    if (d.length > 6)      out = '(' + d.slice(0,3) + ') ' + d.slice(3,6) + '-' + d.slice(6);
+    else if (d.length > 3) out = '(' + d.slice(0,3) + ') ' + d.slice(3);
+    else if (d.length > 0) out = '(' + d;
+    phoneEl.value = out;
   });
 
   // second signer toggle
@@ -1415,6 +1434,7 @@ function goSection(btn, id) {
       let bad = false;
       if(f.req && !val) bad = true;
       if(!bad && f.email && val && !emailRe.test(val)) bad = true;
+      if(!bad && f.phone && val && val.replace(/\D/g,'').length !== 10) bad = true;
       wrap.classList.toggle('show-err', bad);
       inp.classList.toggle('err', bad);
       if(bad && !firstBad) firstBad = inp;
@@ -1491,6 +1511,7 @@ function goSection(btn, id) {
     lines.push('Assignee Name - '  + v('as-assignee'));
     lines.push('Assignee Email - ' + v('as-email'));
     lines.push('Assignee LLC - '   + v('as-llc'));
+    lines.push('Phone - '          + v('as-phone'));
     if(el('as-add2').checked){
       lines.push('Assignee 2 Name - '  + v('as-assignee2'));
       lines.push('Assignee 2 Email - ' + v('as-email2'));
@@ -1537,6 +1558,7 @@ function goSection(btn, id) {
       ['Assignee Name',  v('as-assignee')],
       ['Assignee Email', v('as-email')],
       ['Assignee LLC',   v('as-llc')],
+      ['Phone',          v('as-phone')],
       ['Address',        v('as-address')],
       ['Title Company',  v('as-title')],
       ['COE',            fmtDate(v('as-coe'))],
@@ -1546,7 +1568,7 @@ function goSection(btn, id) {
     ];
     const contractName = (el('as-file-name-field').value || '').trim();
     if(el('as-add2').checked){
-      fields.splice(4, 0,
+      fields.splice(5, 0,
         ['Assignee 2 Name',  v('as-assignee2')],
         ['Assignee 2 Email', v('as-email2')]
       );
