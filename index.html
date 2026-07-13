@@ -1113,6 +1113,7 @@ body { background: var(--bg); color: var(--text); font-family: "Archivo", sans-s
               <button type="button" class="da-snip" data-snip="coe">COE Extension</button>
               <button type="button" class="da-snip" data-snip="postposs">Post-Possession</button>
               <button type="button" class="da-snip" data-snip="pricedrop">Price Drop</button>
+              <button type="button" class="da-snip" data-snip="asgncancel">Assignment Cancellation</button>
             </div>
 
             <div class="ad-builder" id="aa-b-coe" hidden>
@@ -2187,6 +2188,7 @@ function goSection(btn, id) {
   function fillFromDeal(d){
     if(!d) return;
     if(d.assigneeLlc){ el('aa-llc').value = d.assigneeLlc; clearErr('aa-llc'); }
+    asgnRefresh();   // keep the Assignment Cancellation earnest-money line in sync with the LLC
     if(d.signer){ el('aa-signer').value = d.signer; clearErr('aa-signer'); }
     if(d.signingEmail){ el('aa-sign-email').value = d.signingEmail; clearErr('aa-sign-email'); }
     extraWrap.innerHTML = '';
@@ -2336,6 +2338,36 @@ function goSection(btn, id) {
   const ppCal  = makeCal(el('aa-pp-display'),  el('aa-pp-cal'),  { weekdaysOnly:false, onPick(){ refresh('postposs'); } });
   const ppAmt  = makeStepper(el('aa-pp-amt'), el('aa-pp-down'), el('aa-pp-up'), { step:1000, start:5000, resetTo:'5,000', onChange(){ refresh('postposs'); } });
   const pdAmt  = makeStepper(el('aa-pd-amt'), el('aa-pd-down'), el('aa-pd-up'), { step:1000, start:0,    resetTo:'',      onChange(){ refresh('pricedrop'); } });
+
+  /* Assignment Cancellation — a two-line block; the earnest-money line pulls the
+     Assignee LLC (the "Assignee" field / the deal's Assignee LLC column). */
+  const ASGN_SIG1 = 'Assignment between Assignee and Assignor will be rescinded';
+  const ASGN_SIG2 = 'Earnest money will return to';
+  let asgnActive = false;
+  function asgnLines(){
+    const llc = el('aa-llc').value.trim() || '________';
+    return ['- Assignment between Assignee and Assignor will be rescinded.',
+            '- Earnest money will return to ' + llc + ' upon cancellation'];
+  }
+  function asgnRemove(){
+    notesEl.value = notesEl.value.split('\n').filter(l => !l.includes(ASGN_SIG1) && !l.includes(ASGN_SIG2)).join('\n').replace(/\n{3,}/g,'\n\n').replace(/^\s+|\s+$/g,'');
+    autoGrow();
+  }
+  function asgnUpsert(){
+    const parts = asgnLines();
+    const lines = notesEl.value.split('\n');
+    let i1 = -1, i2 = -1;
+    for(let i=0;i<lines.length;i++){ if(lines[i].includes(ASGN_SIG1)) i1=i; if(lines[i].includes(ASGN_SIG2)) i2=i; }
+    if(i1 !== -1 && i2 !== -1){ lines[i1] = parts[0]; lines[i2] = parts[1]; notesEl.value = lines.join('\n').replace(/\n{3,}/g,'\n\n'); }
+    else {
+      const kept = lines.filter(l => !l.includes(ASGN_SIG1) && !l.includes(ASGN_SIG2)).join('\n').replace(/\s+$/,'');
+      notesEl.value = ((kept.trim() ? kept + '\n\n' : '') + parts[0] + '\n' + parts[1]).replace(/\n{3,}/g,'\n\n');
+    }
+    autoGrow();
+  }
+  function asgnRefresh(){ if(asgnActive) asgnUpsert(); }
+  el('aa-llc').addEventListener('input', asgnRefresh);
+
   function setActive(key, on){
     active[key] = on;
     const b = BUILDERS[key];
@@ -2349,6 +2381,12 @@ function goSection(btn, id) {
     btn.addEventListener('click', e => {
       e.stopPropagation();
       const key = btn.dataset.snip;
+      if(key === 'asgncancel'){
+        asgnActive = !asgnActive;
+        btn.classList.toggle('on', asgnActive);
+        if(asgnActive) asgnUpsert(); else asgnRemove();
+        return;
+      }
       const on = !active[key];
       setActive(key, on);
       if(on && key === 'pricedrop') el('aa-pd-amt').focus();
@@ -2360,6 +2398,8 @@ function goSection(btn, id) {
       const panel = el(BUILDERS[key].panel); if(panel) panel.hidden = true;
       const chip = form.querySelector('.da-snip[data-snip="' + key + '"]'); if(chip) chip.classList.remove('on');
     });
+    asgnActive = false;
+    const acChip = form.querySelector('.da-snip[data-snip="asgncancel"]'); if(acChip) acChip.classList.remove('on');
     coeCal.reset(); ppCal.reset(); ppAmt.reset(); pdAmt.reset(); closeAllCals();
   }
 
