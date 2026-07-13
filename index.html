@@ -766,6 +766,48 @@ body { background: var(--bg); color: var(--text); font-family: "Archivo", sans-s
 .dh-plan-card { background: var(--surface2); border: 1px dashed var(--border2); border-radius: var(--radius); padding: 14px 16px; opacity: 0.85; }
 .dh-plan-card .dh-plan-name { font-family: "Archivo", sans-serif; font-size: 13px; font-weight: 700; color: var(--text-sec); margin-bottom: 3px; }
 .dh-plan-card .dh-plan-soon { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+
+/* === Draft Addendum (Assignee): add-signer blocks + date picker + quick-add builders (ported from SrACQ) === */
+.da-signer-block { display: flex; flex-direction: column; gap: 14px; padding: 16px; border: 1px dashed var(--border2); border-radius: var(--radius); background: rgba(30,65,100,0.03); }
+.da-signer-block-head { display: flex; align-items: center; justify-content: space-between; }
+.da-signer-block-title { font-family: "Archivo", sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
+.da-remove-signer { background: none; border: none; color: var(--coral); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; padding: 3px 8px; border-radius: 6px; transition: color 0.12s, background 0.12s; }
+.da-remove-signer:hover { color: #fff; background: var(--coral); }
+.da-signer-block-grid { display: grid; gap: 16px 18px; grid-template-columns: 1fr 1fr; }
+@media (max-width: 720px) { .da-signer-block-grid { grid-template-columns: 1fr; } }
+.da-add-row { grid-column: 1 / -1; }
+.da-add-signer { background: var(--accent-light); color: var(--accent); border: 1px dashed var(--accent-border); border-radius: var(--radius); padding: 9px 16px; font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: background 0.12s, color 0.12s, border-color 0.12s, border-style 0.12s; }
+.da-add-signer:hover { background: var(--accent); color: #fff; border-color: var(--accent); border-style: solid; }
+.da-date { position: relative; }
+.da-date-display { cursor: pointer; background: var(--bg); }
+.da-date-display::placeholder { color: var(--text-muted); }
+.da-field.show-err .da-date-display { border-color: var(--coral); box-shadow: 0 0 0 3px var(--coral-dim); }
+.da-cal { position: absolute; top: calc(100% + 6px); left: 0; z-index: 45; width: 288px; max-width: calc(100vw - 40px); background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius); box-shadow: 0 12px 30px rgba(30,65,100,0.16); padding: 12px; display: none; }
+.da-cal.show { display: block; }
+.da-cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.da-cal-nav { background: var(--surface2); border: 1px solid var(--border2); color: var(--text-sec); width: 28px; height: 28px; border-radius: 7px; cursor: pointer; font-size: 16px; line-height: 1; display: flex; align-items: center; justify-content: center; transition: background 0.12s, border-color 0.12s, color 0.12s; }
+.da-cal-nav:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+.da-cal-title { font-family: "Archivo", sans-serif; font-size: 13px; font-weight: 700; color: var(--text); }
+.da-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.da-cal-dow { font-size: 10px; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; color: var(--text-muted); text-align: center; padding: 4px 0; }
+.da-cal-dow.we { color: var(--coral); opacity: 0.75; }
+.da-cal-cell { border: none; background: none; font-family: inherit; font-size: 12.5px; color: var(--text); height: 32px; border-radius: 7px; cursor: pointer; padding: 0; transition: background 0.1s, color 0.1s; }
+.da-cal-cell.empty { visibility: hidden; }
+.da-cal-cell:hover:not(.disabled) { background: var(--accent-light); color: var(--accent); }
+.da-cal-cell.disabled { color: var(--text-muted); opacity: 0.32; cursor: not-allowed; text-decoration: line-through; }
+.da-cal-cell.sel { background: var(--accent); color: #fff; font-weight: 700; }
+.da-cal-cell.today:not(.sel) { box-shadow: inset 0 0 0 1px var(--accent-border); }
+.da-cal-note { margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--border); font-size: 10.5px; color: var(--text-muted); line-height: 1.45; }
+.da-cal-note b { color: var(--coral); font-weight: 700; }
+.ad-builder { margin: 4px 0 12px; padding: 13px 15px; background: var(--accent-light); border: 1px solid var(--border); border-radius: var(--radius); display: flex; flex-wrap: wrap; gap: 16px; overflow: visible; }
+.ad-builder[hidden] { display: none; }
+.ad-builder-row { display: flex; flex-direction: column; gap: 6px; }
+.ad-builder-row > label { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); }
+.ad-stepper { display: flex; align-items: stretch; gap: 6px; }
+.ad-stepper .da-input-wrap { width: 118px; flex: none; }
+.ad-stepper .da-input { width: 100%; }
+.ad-step { width: 40px; border: 1px solid var(--border2); background: var(--surface); color: var(--accent); border-radius: 8px; font-size: 18px; font-weight: 700; line-height: 1; cursor: pointer; transition: background 0.12s, color 0.12s, border-color 0.12s; }
+.ad-step:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 </head>
@@ -786,6 +828,7 @@ body { background: var(--bg); color: var(--text); font-family: "Archivo", sans-s
     <div class="nav-section">
       <div class="nav-section-label">Resources</div>
       <button class="nav-item" id="nav-draft-assignment" onclick="goSection(this,'draft-assignment')"><span class="nav-dot"></span>Draft Assignment</button>
+      <button class="nav-item" id="nav-draft-addendum-assignee" onclick="goSection(this,'draft-addendum-assignee')"><span class="nav-dot"></span>Draft Addendum (Assignee)</button>
       <button class="nav-item" id="nav-quick-links" onclick="goSection(this,'quick-links')"><span class="nav-dot"></span>Quick Links</button>
     </div>
   </aside>
@@ -1002,6 +1045,142 @@ body { background: var(--bg); color: var(--text); font-family: "Archivo", sans-s
       </div>
 
       <iframe name="as-sink" id="as-sink" style="display:none" title="submission target"></iframe>
+    </div>
+
+    <div id="section-draft-addendum-assignee" class="section">
+      <div class="section-header">
+        <div class="section-eyebrow">Dispo Handbook</div>
+        <div class="section-title">Draft Addendum (Assignee)</div>
+        <div class="section-sub">Need to amend an assignment? Pick the deal, confirm the assignee, and hit <strong style="color:var(--text);font-weight:500;">Send to TC</strong>. DocuSign preps the addendum for signing.</div>
+      </div>
+
+      <div class="da-intro">
+        <div class="da-intro-icon">📝</div>
+        <div class="da-intro-list">
+          <div>Addendum will be drafted and sent via <strong>DocuSign</strong>. <strong>Assignor signs as TIMMY LE.</strong></div>
+          <div><strong style="color:var(--coral)">*MUST HAVE THE ASSIGNEE ON THE PHONE*</strong></div>
+          <div>If the addendum is viewed and not completed within <strong>30 minutes</strong>, it will be <strong style="color:var(--coral)">VOIDED</strong>.</div>
+        </div>
+      </div>
+
+      <form class="da-form" id="aa-form" novalidate>
+        <div class="da-subhead">Dispo Manager <span class="req">*</span></div>
+        <div class="da-acq" id="aa-acq">
+          <button type="button" class="da-acq-btn" data-acq="Daniel Santos" data-acq-email="Daniel@1houroffers.com">Daniel Santos</button>
+        </div>
+        <div class="da-acq-err" id="aa-acq-err">Pick the dispo manager sending this.</div>
+        <input type="hidden" id="aa-acq-val" name="dispoManager">
+        <input type="hidden" id="aa-acq-email" name="dispoManagerEmail">
+
+        <div class="da-grid" style="margin-top:22px;">
+          <div class="da-field full">
+            <label class="da-label" for="aa-address">Address <span class="req">*</span><span class="da-hint"><a href="https://onehouroffers.github.io/DealTracker/" target="_blank" rel="noopener" style="color:var(--logo-teal);text-decoration:underline;">Check Deal Tracker Site</a> if needed</span></label>
+            <div class="da-ac">
+              <input class="da-input" id="aa-address" name="address" type="text" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" placeholder="Pick a deal under contract — or type an address…">
+              <div class="da-ac-list" id="aa-ac-list" role="listbox"></div>
+            </div>
+            <div class="da-err-msg">Enter the property address.</div>
+          </div>
+
+          <div class="da-field full">
+            <label class="da-label" for="aa-llc">Assignee <span class="req">*</span><span class="da-hint">entity taking the assignment (LLC)</span></label>
+            <input class="da-input" id="aa-llc" name="assignee" type="text" autocomplete="off" placeholder="Assignee LLC / entity, exactly as it should appear">
+            <div class="da-err-msg">Enter the assignee.</div>
+          </div>
+
+          <div class="da-field">
+            <label class="da-label" for="aa-signer">Assignee Name <span class="req">*</span></label>
+            <input class="da-input" id="aa-signer" name="signer" type="text" autocomplete="off" placeholder="Full legal name of who's signing">
+            <div class="da-err-msg">Enter the assignee's name.</div>
+          </div>
+
+          <div class="da-field">
+            <label class="da-label" for="aa-sign-email">Assignee Email <span class="req">*</span></label>
+            <input class="da-input" id="aa-sign-email" name="signingEmail" type="email" autocomplete="off" placeholder="assignee@email.com">
+            <div class="da-err-msg">Enter a valid email.</div>
+          </div>
+
+          <div class="da-signers-extra" id="aa-signers-extra"></div>
+
+          <div class="da-add-row">
+            <button type="button" class="da-add-signer" id="aa-add-signer">+ Add another signer</button>
+          </div>
+
+          <div class="da-field full">
+            <label class="da-label" for="aa-notes">Additional Terms <span class="req">*</span><span class="da-hint">what's changing on this addendum</span></label>
+            <div class="da-snips">
+              <span class="da-snips-label">Quick add:</span>
+              <button type="button" class="da-snip" data-snip="coe">COE Extension</button>
+              <button type="button" class="da-snip" data-snip="postposs">Post-Possession</button>
+              <button type="button" class="da-snip" data-snip="pricedrop">Price Drop</button>
+            </div>
+
+            <div class="ad-builder" id="aa-b-coe" hidden>
+              <div class="ad-builder-row">
+                <label>Close of Escrow — on or before</label>
+                <div class="da-date">
+                  <input class="da-input da-date-display" id="aa-coe-display" type="text" readonly autocomplete="off" placeholder="Pick a date…" aria-haspopup="dialog">
+                  <div class="da-cal" id="aa-coe-cal" role="dialog" aria-hidden="true"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="ad-builder" id="aa-b-postposs" hidden>
+              <div class="ad-builder-row">
+                <label>Possession until</label>
+                <div class="da-date">
+                  <input class="da-input da-date-display" id="aa-pp-display" type="text" readonly autocomplete="off" placeholder="Pick a date…" aria-haspopup="dialog">
+                  <div class="da-cal" id="aa-pp-cal" role="dialog" aria-hidden="true"></div>
+                </div>
+              </div>
+              <div class="ad-builder-row">
+                <label>Holdback amount</label>
+                <div class="ad-stepper">
+                  <button type="button" class="ad-step" id="aa-pp-down" aria-label="decrease $1,000">&minus;</button>
+                  <div class="da-input-wrap"><span class="da-prefix">$</span><input class="da-input has-prefix" id="aa-pp-amt" type="text" inputmode="numeric" autocomplete="off" value="5,000"></div>
+                  <button type="button" class="ad-step" id="aa-pp-up" aria-label="increase $1,000">+</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="ad-builder" id="aa-b-pricedrop" hidden>
+              <div class="ad-builder-row">
+                <label>New purchase price</label>
+                <div class="ad-stepper">
+                  <button type="button" class="ad-step" id="aa-pd-down" aria-label="decrease $1,000">&minus;</button>
+                  <div class="da-input-wrap"><span class="da-prefix">$</span><input class="da-input has-prefix" id="aa-pd-amt" type="text" inputmode="numeric" autocomplete="off" placeholder="0"></div>
+                  <button type="button" class="ad-step" id="aa-pd-up" aria-label="increase $1,000">+</button>
+                </div>
+              </div>
+            </div>
+
+            <textarea class="da-textarea" id="aa-notes" name="notes" placeholder="Describe exactly what this addendum changes…"></textarea>
+            <div class="da-err-msg">Enter the addendum terms.</div>
+          </div>
+        </div>
+
+        <input type="hidden" name="docType" value="Assignee Addendum">
+        <input type="hidden" id="aa-summary-field" name="_summary">
+
+        <div class="da-actions">
+          <button type="submit" class="da-submit" id="aa-submit">Send to TC &rarr;</button>
+          <button type="button" class="da-reset" id="aa-reset">Clear form</button>
+          <span class="da-status" id="aa-status"></span>
+        </div>
+      </form>
+
+      <div class="da-success" id="aa-success">
+        <div class="da-success-badge">✓ <span id="aa-success-text">Sent to TC</span></div>
+        <div style="font-size:13px;color:var(--text-sec);margin-bottom:14px;">Here's exactly what went over, in DocuSign field order:</div>
+        <div class="da-summary" id="aa-summary"></div>
+        <div class="da-copy-row">
+          <button type="button" class="da-copy-btn" id="aa-copy">Copy details</button>
+          <button type="button" class="da-again" id="aa-again">Submit another</button>
+        </div>
+        <div class="da-note" id="aa-note"></div>
+      </div>
+
+      <iframe name="aa-sink" id="aa-sink" style="display:none" title="submission target"></iframe>
     </div>
 
     <!-- TITLE COMPANIES -->
@@ -1935,6 +2114,395 @@ function goSection(btn, id) {
   }
   window.addEventListener('DOMContentLoaded', openFromHash);
   window.addEventListener('hashchange', openFromHash);
+})();
+</script>
+<script>
+/* ===================== DRAFT ADDENDUM (ASSIGNEE) =====================
+   Twin of the Sr. ACQ Draft Addendum, for the Dispo team. Address is a
+   deal-tracker dropdown; picking a deal auto-fills the Assignee (LLC),
+   Assignee Name + Email, and a second assignee if present — parsed from
+   the deal's cell note ("Assignee Name - ...", "Assignee Email - ...",
+   "Assignee LLC - ..."). Posts to its OWN standalone Apps Script.
+===================================================================== */
+(function(){
+  // Paste the ASSIGNEE-ADDENDUM project's deployed Web App URL here.
+  const SCRIPT_URL = "";   // <-- assignee-addendum Web App URL
+
+  const form = document.getElementById('aa-form');
+  if(!form) return;
+  const el = id => document.getElementById(id);
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  const fields = [
+    {id:'aa-address',    key:'Address',        req:true},
+    {id:'aa-llc',        key:'Assignee',       req:true},
+    {id:'aa-signer',     key:'Assignee Name',  req:true},
+    {id:'aa-sign-email', key:'Assignee Email', req:true, email:true},
+    {id:'aa-notes',      key:'Additional Terms', req:true}
+  ];
+
+  /* === Address = under-contract deal picker (from the deal tracker) === */
+  const addrEl = el('aa-address'), acList = el('aa-ac-list');
+  let acItems = [], acActive = -1, DEALS = [];
+
+  function acClose(){ acList.classList.remove('show'); acList.innerHTML=''; acItems=[]; acActive=-1; addrEl.setAttribute('aria-expanded','false'); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+  function acRender(rows){
+    acItems = rows; acActive = -1;
+    if(!rows.length){ acClose(); return; }
+    acList.innerHTML = rows.map((r,i)=>
+      '<div class="da-ac-item" role="option" data-i="'+i+'">'+r.main+
+      (r.sub ? '<span class="da-ac-sub">'+r.sub+'</span>' : '')+'</div>'
+    ).join('');
+    acList.classList.add('show'); addrEl.setAttribute('aria-expanded','true');
+    acList.querySelectorAll('.da-ac-item').forEach(node=>{
+      node.addEventListener('mousedown', e=>{ e.preventDefault(); acChoose(+node.dataset.i); });
+    });
+  }
+  function dealSub(d){
+    const dash = '—';
+    const yes = '<span style="color:#2e9e5b;font-weight:700">✓</span>';
+    const no  = '<span style="color:var(--coral);font-weight:700">✗</span>';
+    const rows = [
+      'Assignee LLC - ' + (d.assigneeLlc ? esc(d.assigneeLlc) : dash),
+      'Assignee - '     + (d.signer      ? esc(d.signer)      : dash),
+      'Email ' + (d.signingEmail ? yes : no)
+    ];
+    if(d.signer2 || d.signer2Email){
+      rows.push('Assignee 2 - ' + (d.signer2 ? esc(d.signer2) : dash));
+      rows.push('Email ' + (d.signer2Email ? yes : no));
+    }
+    return rows.join('<br>');
+  }
+  function dealRows(q){
+    const ql = (q||'').toLowerCase();
+    return DEALS
+      .filter(d => { const a=(d.address||'').toLowerCase(), n=(d.assigneeLlc||'').toLowerCase(), s=(d.signer||'').toLowerCase(); return !ql || a.includes(ql) || n.includes(ql) || s.includes(ql); })
+      .slice(0, 100)
+      .map(d => ({ main: esc(d.address), sub: dealSub(d), full: d.address, deal: d }));
+  }
+  function showList(q){ acRender(dealRows(q)); }
+
+  function clearErr(id){ const inp = el(id); if(!inp) return; inp.classList.remove('err'); const f = inp.closest('.da-field'); if(f) f.classList.remove('show-err'); }
+  function fillFromDeal(d){
+    if(!d) return;
+    if(d.assigneeLlc){ el('aa-llc').value = d.assigneeLlc; clearErr('aa-llc'); }
+    if(d.signer){ el('aa-signer').value = d.signer; clearErr('aa-signer'); }
+    if(d.signingEmail){ el('aa-sign-email').value = d.signingEmail; clearErr('aa-sign-email'); }
+    extraWrap.innerHTML = '';
+    if(d.signer2 && d.signer2Email){
+      addSigner();
+      const block = extraWrap.querySelector('.da-signer-block:last-child');
+      if(block){
+        block.querySelector('.da-extra-name').value = d.signer2;
+        block.querySelector('.da-extra-email').value = d.signer2Email;
+      }
+    }
+  }
+  function acChoose(i){
+    const r = acItems[i]; if(!r) return;
+    addrEl.value = r.full;
+    clearErr('aa-address');
+    acClose();
+    fillFromDeal(r.deal);
+  }
+
+  addrEl.addEventListener('focus', ()=> showList(''));
+  addrEl.addEventListener('click', ()=> showList(''));
+  addrEl.addEventListener('input', ()=> showList(addrEl.value.trim()));
+  addrEl.addEventListener('keydown', e=>{
+    if(!acList.classList.contains('show')) return;
+    const items = acList.querySelectorAll('.da-ac-item');
+    if(e.key==='ArrowDown'){ e.preventDefault(); acActive=Math.min(acActive+1, items.length-1); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); acActive=Math.max(acActive-1, 0); }
+    else if(e.key==='Enter'){ e.preventDefault(); acChoose(acActive>=0?acActive:0); return; }
+    else if(e.key==='Escape'){ acClose(); return; }
+    else return;
+    items.forEach((n,idx)=>n.classList.toggle('active', idx===acActive));
+    if(items[acActive]) items[acActive].scrollIntoView({block:'nearest'});
+  });
+  addrEl.addEventListener('blur', ()=>{ setTimeout(acClose, 150); });
+
+  // sort by street name (drop leading house number + N/S/E/W)
+  function streetKey(address){
+    var s = String(address||'').split(',')[0].trim();
+    s = s.replace(/^\s*\d+[a-z]?(-\d+)?\s+/i, '');
+    s = s.replace(/^(n|s|e|w|ne|nw|se|sw|north|south|east|west|northeast|northwest|southeast|southwest)\.?\s+/i, '');
+    return s.toLowerCase();
+  }
+  window.__ohoAssigneeDeals = function(list){
+    if(Array.isArray(list)) DEALS = list.slice().sort(function(a,b){ return streetKey(a.address).localeCompare(streetKey(b.address)); });
+    if(document.activeElement === addrEl) showList('');
+  };
+  (function loadDeals(){
+    if(!SCRIPT_URL) return;
+    const s = document.createElement('script');
+    s.src = SCRIPT_URL + '?list=deals&callback=__ohoAssigneeDeals';
+    s.async = true;
+    s.onerror = function(){ if(s.parentNode) s.parentNode.removeChild(s); };
+    document.head.appendChild(s);
+  })();
+
+  /* === Additional Terms quick-add builders === */
+  const notesEl = el('aa-notes');
+  function autoGrow(){ notesEl.style.height = 'auto'; notesEl.style.height = Math.max(notesEl.scrollHeight, 130) + 'px'; }
+  notesEl.addEventListener('input', autoGrow);
+  autoGrow();
+
+  function removeSig(sig){
+    const kept = notesEl.value.split('\n').filter(l => !l.includes(sig));
+    notesEl.value = kept.join('\n').replace(/\n{3,}/g,'\n\n').replace(/^\s+|\s+$/g,'');
+    autoGrow();
+  }
+  function upsertLine(sig, text){
+    const lines = notesEl.value.split('\n');
+    let found = false;
+    for(let i=0;i<lines.length;i++){ if(lines[i].includes(sig)){ lines[i] = text; found = true; break; } }
+    notesEl.value = (found ? lines.join('\n') : (notesEl.value.trim() ? notesEl.value.replace(/\s+$/,'') + '\n\n' + text : text)).replace(/\n{3,}/g,'\n\n');
+    autoGrow();
+  }
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  function ordinal(n){ const s = ['th','st','nd','rd'], v = n % 100; return n + (s[(v-20)%10] || s[v] || s[0]); }
+  function fmtLong(isoStr){ const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoStr||''); if(!m) return ''; return MONTHS[+m[2]-1] + ' ' + ordinal(+m[3]) + ', ' + m[1]; }
+  function fmtAmt(n){ return Number(n).toLocaleString('en-US'); }
+  function parseAmt(s){ const r = String(s||'').replace(/[^0-9]/g,''); return r==='' ? NaN : parseInt(r,10); }
+
+  const _cals = [];
+  function closeAllCals(){ _cals.forEach(c => c.close()); }
+  document.addEventListener('click', closeAllCals);
+  function makeCal(displayEl, calEl, opts){
+    opts = opts || {};
+    const today = new Date(); today.setHours(0,0,0,0);
+    let view = new Date(today.getFullYear(), today.getMonth(), 1);
+    let selected = null;
+    const iso = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    const isWeekend = d => { const g = d.getDay(); return g===0 || g===6; };
+    function render(){
+      const y = view.getFullYear(), m = view.getMonth();
+      const startDow = new Date(y,m,1).getDay(), dim = new Date(y,m+1,0).getDate();
+      let html = '<div class="da-cal-head"><button type="button" class="da-cal-nav" data-nav="-1" aria-label="Previous month">&#8249;</button><span class="da-cal-title">' + MONTHS[m] + ' ' + y + '</span><button type="button" class="da-cal-nav" data-nav="1" aria-label="Next month">&#8250;</button></div><div class="da-cal-grid">';
+      for(let i=0;i<7;i++){ html += '<div class="da-cal-dow' + ((i===0||i===6)?' we':'') + '">' + DOW[i].slice(0,2) + '</div>'; }
+      for(let i=0;i<startDow;i++){ html += '<button type="button" class="da-cal-cell empty" tabindex="-1" disabled></button>'; }
+      for(let d=1; d<=dim; d++){
+        const date = new Date(y,m,d), we = !!opts.weekdaysOnly && isWeekend(date), cls = ['da-cal-cell'];
+        if(we) cls.push('disabled');
+        if(selected && iso(selected)===iso(date)) cls.push('sel');
+        if(iso(date)===iso(today)) cls.push('today');
+        html += '<button type="button" class="' + cls.join(' ') + '"' + (we ? ' disabled aria-disabled="true"' : ' data-day="' + d + '"') + '>' + d + '</button>';
+      }
+      html += '</div>';
+      if(opts.weekdaysOnly) html += '<div class="da-cal-note">Weekends are <b>disabled</b> — title companies can’t close on Saturday or Sunday.</div>';
+      calEl.innerHTML = html;
+      calEl.querySelectorAll('.da-cal-nav').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); view = new Date(y, m + (+b.dataset.nav), 1); render(); }));
+      calEl.querySelectorAll('.da-cal-cell[data-day]').forEach(b => b.addEventListener('click', e => {
+        e.stopPropagation();
+        selected = new Date(view.getFullYear(), view.getMonth(), +b.dataset.day);
+        displayEl.value = fmtLong(iso(selected));
+        close();
+        if(opts.onPick) opts.onPick(iso(selected));
+      }));
+    }
+    function open(){ closeAllCals(); if(selected){ view = new Date(selected.getFullYear(), selected.getMonth(), 1); } render(); calEl.classList.add('show'); calEl.setAttribute('aria-hidden','false'); }
+    function close(){ calEl.classList.remove('show'); calEl.setAttribute('aria-hidden','true'); }
+    displayEl.addEventListener('click', e => { e.stopPropagation(); calEl.classList.contains('show') ? close() : open(); });
+    const api = { open, close, getIso(){ return selected ? iso(selected) : ''; }, reset(){ selected = null; displayEl.value = ''; close(); } };
+    _cals.push(api);
+    return api;
+  }
+  function makeStepper(input, downBtn, upBtn, opts){
+    opts = opts || {};
+    const step = opts.step || 1000, min = opts.min || 0;
+    function set(n){ input.value = isNaN(n) ? '' : fmtAmt(Math.max(min, n)); if(opts.onChange) opts.onChange(); }
+    function bump(dir){ const v = parseAmt(input.value); set((isNaN(v) ? (opts.start||0) : v) + dir*step); }
+    downBtn.addEventListener('click', e => { e.stopPropagation(); bump(-1); });
+    upBtn.addEventListener('click', e => { e.stopPropagation(); bump(1); });
+    input.addEventListener('input', () => { if(opts.onChange) opts.onChange(); });
+    input.addEventListener('blur', () => { const v = parseAmt(input.value); input.value = isNaN(v) ? '' : fmtAmt(v); if(opts.onChange) opts.onChange(); });
+    return { get(){ return parseAmt(input.value); }, reset(){ input.value = opts.resetTo != null ? opts.resetTo : ''; } };
+  }
+
+  const active = {};
+  const BUILDERS = {
+    coe: { panel: 'aa-b-coe', sig: 'Close of Escrow to be on or before',
+      compose(){ const d = coeCal.getIso(); return '- Close of Escrow to be on or before ' + (d ? fmtLong(d) : '____________'); } },
+    postposs: { panel: 'aa-b-postposs', sig: 'Buyer agrees to give the Seller a possession until',
+      compose(){ const d = ppCal.getIso(), a = ppAmt.get(); return '- Buyer agrees to give the Seller a possession until ' + (d ? fmtLong(d) : '____________') + ' with a $' + (isNaN(a) ? 'X,XXX' : fmtAmt(a)) + ', If the property is not vacant by 11:59PM Local Time, The Holdback will be released to the Buyer.'; } },
+    pricedrop: { panel: 'aa-b-pricedrop', sig: 'Purchase Price to be',
+      compose(){ const a = pdAmt.get(); return '- Purchase Price to be $' + (isNaN(a) ? '________' : fmtAmt(a)); } }
+  };
+  function refresh(key){ if(active[key]) upsertLine(BUILDERS[key].sig, BUILDERS[key].compose()); }
+  const coeCal = makeCal(el('aa-coe-display'), el('aa-coe-cal'), { weekdaysOnly:true,  onPick(){ refresh('coe'); } });
+  const ppCal  = makeCal(el('aa-pp-display'),  el('aa-pp-cal'),  { weekdaysOnly:false, onPick(){ refresh('postposs'); } });
+  const ppAmt  = makeStepper(el('aa-pp-amt'), el('aa-pp-down'), el('aa-pp-up'), { step:1000, start:5000, resetTo:'5,000', onChange(){ refresh('postposs'); } });
+  const pdAmt  = makeStepper(el('aa-pd-amt'), el('aa-pd-down'), el('aa-pd-up'), { step:1000, start:0,    resetTo:'',      onChange(){ refresh('pricedrop'); } });
+  function setActive(key, on){
+    active[key] = on;
+    const b = BUILDERS[key];
+    const panel = el(b.panel);
+    const chip = form.querySelector('.da-snip[data-snip="' + key + '"]');
+    if(panel) panel.hidden = !on;
+    if(chip) chip.classList.toggle('on', on);
+    if(on) upsertLine(b.sig, b.compose()); else removeSig(b.sig);
+  }
+  form.querySelectorAll('.da-snip').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const key = btn.dataset.snip;
+      const on = !active[key];
+      setActive(key, on);
+      if(on && key === 'pricedrop') el('aa-pd-amt').focus();
+    });
+  });
+  function resetBuilders(){
+    Object.keys(BUILDERS).forEach(key => {
+      active[key] = false;
+      const panel = el(BUILDERS[key].panel); if(panel) panel.hidden = true;
+      const chip = form.querySelector('.da-snip[data-snip="' + key + '"]'); if(chip) chip.classList.remove('on');
+    });
+    coeCal.reset(); ppCal.reset(); ppAmt.reset(); pdAmt.reset(); closeAllCals();
+  }
+
+  /* === additional signers === */
+  const extraWrap = el('aa-signers-extra');
+  function renumberSigners(){
+    extraWrap.querySelectorAll('.da-signer-block').forEach((block, i)=>{
+      const n = i + 2;
+      block.dataset.n = n;
+      block.querySelector('.da-signer-block-title').textContent = 'Assignee ' + n;
+      block.querySelector('.da-extra-name').name = 'signer' + n;
+      block.querySelector('.da-extra-email').name = 'signer' + n + 'Email';
+      block.querySelector('.da-extra-name-label').innerHTML = 'Assignee ' + n + ' Name <span class="req">*</span>';
+      block.querySelector('.da-extra-email-label').innerHTML = 'Assignee ' + n + ' Email <span class="req">*</span>';
+    });
+  }
+  function addSigner(){
+    const block = document.createElement('div');
+    block.className = 'da-signer-block';
+    block.innerHTML =
+      '<div class="da-signer-block-head"><span class="da-signer-block-title">Assignee</span>' +
+        '<button type="button" class="da-remove-signer">Remove</button></div>' +
+      '<div class="da-signer-block-grid">' +
+        '<div class="da-field"><label class="da-label da-extra-name-label">Assignee Name <span class="req">*</span></label>' +
+          '<input class="da-input da-extra-name" type="text" autocomplete="off" placeholder="Full legal name"><div class="da-err-msg">Enter the name.</div></div>' +
+        '<div class="da-field"><label class="da-label da-extra-email-label">Assignee Email <span class="req">*</span></label>' +
+          '<input class="da-input da-extra-email" type="email" autocomplete="off" placeholder="assignee@email.com"><div class="da-err-msg">Enter a valid email.</div></div>' +
+      '</div>';
+    block.querySelector('.da-remove-signer').addEventListener('click', ()=>{ block.remove(); renumberSigners(); });
+    extraWrap.appendChild(block);
+    renumberSigners();
+    block.querySelector('.da-extra-name').focus();
+  }
+  el('aa-add-signer').addEventListener('click', addSigner);
+
+  /* === Dispo Manager selector (Daniel auto-selected) === */
+  form.querySelectorAll('#aa-acq .da-acq-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      form.querySelectorAll('#aa-acq .da-acq-btn').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on');
+      el('aa-acq-val').value = btn.dataset.acq || '';
+      el('aa-acq-email').value = btn.dataset.acqEmail || '';
+      el('aa-acq-err').classList.remove('show');
+    });
+  });
+  (function(){ const def = form.querySelector('#aa-acq .da-acq-btn'); if(def) def.click(); })();
+
+  function validate(){
+    let ok=true, firstBad=null;
+    const acqErr = el('aa-acq-err');
+    if(!el('aa-acq-val').value){ acqErr.classList.add('show'); ok=false; firstBad = form.querySelector('#aa-acq .da-acq-btn'); }
+    else acqErr.classList.remove('show');
+    fields.forEach(f=>{
+      const inp = el(f.id), wrap = inp.closest('.da-field'), val = inp.value.trim();
+      let bad = false;
+      if(f.req && !val) bad = true;
+      if(!bad && f.email && val && !emailRe.test(val)) bad = true;
+      wrap.classList.toggle('show-err', bad);
+      inp.classList.toggle('err', bad);
+      if(bad && !firstBad) firstBad = inp;
+      if(bad) ok = false;
+    });
+    extraWrap.querySelectorAll('.da-signer-block').forEach(block=>{
+      [[block.querySelector('.da-extra-name'),false],[block.querySelector('.da-extra-email'),true]].forEach(pair=>{
+        const inp = pair[0], wrap = inp.closest('.da-field'), v = inp.value.trim();
+        const bad = !v || (pair[1] && !emailRe.test(v));
+        wrap.classList.toggle('show-err', bad);
+        inp.classList.toggle('err', bad);
+        if(bad && !firstBad) firstBad = inp;
+        if(bad) ok = false;
+      });
+    });
+    if(firstBad) firstBad.focus();
+    return ok;
+  }
+
+  function buildSummary(){
+    const v = id => el(id).value.trim();
+    const lines = [];
+    lines.push('Addendum (Assignee)');
+    const acqVal = el('aa-acq-val').value, acqEmail = el('aa-acq-email').value;
+    if(acqVal) lines.push('Dispo Manager - ' + acqVal + (acqEmail ? ' (' + acqEmail + ')' : ''));
+    lines.push('Assignee Name - '  + v('aa-signer'));
+    lines.push('Assignee Email - ' + v('aa-sign-email'));
+    extraWrap.querySelectorAll('.da-signer-block').forEach(block=>{
+      const n = block.dataset.n;
+      lines.push('Assignee ' + n + ' Name - '  + block.querySelector('.da-extra-name').value.trim());
+      lines.push('Assignee ' + n + ' Email - ' + block.querySelector('.da-extra-email').value.trim());
+    });
+    lines.push('Assignee - ' + v('aa-llc'));
+    lines.push('Address - '  + v('aa-address'));
+    const notes = v('aa-notes');
+    if(notes) lines.push('', 'Additional Terms: ' + notes);
+    return lines.join('\n');
+  }
+
+  let submitted = false;
+  el('aa-sink').addEventListener('load', ()=>{ if(submitted) showSuccess(true); });
+  function showSuccess(sent){
+    el('aa-summary').textContent = buildSummary();
+    el('aa-success-text').textContent = sent ? 'Sent to TC' : 'Ready to send';
+    el('aa-note').textContent = sent
+      ? "Assignee addendum details have been emailed to Transactions@1houroffers.com"
+      : "Endpoint not connected yet — copy this and send it to your TC, or paste your Web App URL into this form's config.";
+    form.style.display = 'none';
+    el('aa-success').classList.add('show');
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  form.addEventListener('submit', e=>{
+    e.preventDefault();
+    if(!validate()){ el('aa-status').textContent = 'Check the highlighted fields.'; return; }
+    el('aa-status').textContent = '';
+    el('aa-summary-field').value = buildSummary();
+    if(SCRIPT_URL){
+      el('aa-submit').disabled = true;
+      el('aa-submit').textContent = 'Sending…';
+      submitted = true;
+      form.action = SCRIPT_URL; form.method = 'POST'; form.target = 'aa-sink';
+      form.submit();
+    } else { showSuccess(false); }
+  });
+  el('aa-copy').addEventListener('click',()=>{
+    navigator.clipboard.writeText(buildSummary()).then(()=>{ const b = el('aa-copy'), o = b.textContent; b.textContent = 'Copied ✓'; setTimeout(()=>{ b.textContent = o; }, 1500); }).catch(()=>{});
+  });
+  function resetForm(){
+    form.reset();
+    el('aa-acq-err').classList.remove('show');
+    acClose();
+    extraWrap.innerHTML = '';
+    resetBuilders();
+    autoGrow();
+    fields.forEach(f=>{ el(f.id).classList.remove('err'); el(f.id).closest('.da-field').classList.remove('show-err'); });
+    (function(){ const def = form.querySelector('#aa-acq .da-acq-btn'); if(def) def.click(); })();
+    el('aa-submit').disabled = false;
+    el('aa-submit').innerHTML = 'Send to TC &rarr;';
+    el('aa-status').textContent = '';
+    submitted = false;
+    el('aa-success').classList.remove('show');
+    form.style.display = '';
+  }
+  el('aa-again').addEventListener('click', resetForm);
+  el('aa-reset').addEventListener('click', resetForm);
 })();
 </script>
 </body>
