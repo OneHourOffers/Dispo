@@ -718,6 +718,12 @@ body { background: var(--bg); color: var(--text); font-family: "Archivo", sans-s
 .da-ac-item:last-child { border-bottom: none; }
 .da-ac-item:hover, .da-ac-item.active { background: var(--accent-light); }
 .da-ac-sub { display: block; font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+/* Deal Tracker picker: Set To Close deals sit below Need To Sell and are tinted the tracker's EMD pink so they read as the same group */
+.da-ac-item.da-ac-close { background: #fdeaee; color: var(--text); }
+.da-ac-item.da-ac-close .da-ac-sub { color: #9a5560; }
+.da-ac-item.da-ac-close:hover, .da-ac-item.da-ac-close.active { background: #f9d3da; }
+.da-ac-group { display:inline-block; font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:1px 7px; border-radius:999px; margin-right:6px; vertical-align:1px; background:var(--accent-light); color:var(--navy); border:1px solid var(--accent-border); }
+.da-ac-close .da-ac-group { background:#e8465a; color:#fff; border-color:#d43a4e; }
 .da-ac-tag { display:inline-block; font-size:9.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--coral); background:rgba(243,138,129,.16); border-radius:999px; padding:1px 7px; margin-left:7px; vertical-align:middle; }
 .da-file-drop { display:flex; align-items:center; gap:10px; padding:14px 16px; border:1.5px dashed var(--border2); border-radius:var(--radius); background:var(--surface2); color:var(--text-muted); font-size:13px; cursor:pointer; transition:border-color .15s, color .15s, background .15s; }
 .da-file-drop:hover { border-color:var(--accent); color:var(--text-sec); }
@@ -1311,6 +1317,10 @@ function goSection(btn, id) {
       .replace(/\s+/g,' ').trim();
   };
 
+  // Row styling helpers shared by both pickers
+  window.__ohoGroupCls   = d => (d && d.group === 'close') ? 'da-ac-close' : '';
+  window.__ohoGroupBadge = d => !d ? '' : (d.group === 'close' ? '<span class="da-ac-group">Set To Close</span>' : '<span class="da-ac-group">Need To Sell</span>');
+
   let promise = null;
   window.__ohoTrackerDeals = function(){
     if(promise) return promise;
@@ -1336,6 +1346,7 @@ function goSection(btn, id) {
               address,
               key,
               section: name,
+              group:   CLOSE_SECTION.test(name) ? 'close' : 'sell',
               status:  String(row.status||'').trim(),
               sr:      String(row.sr||'').trim(),
               title:   String(row.title||'').trim(),
@@ -1425,6 +1436,7 @@ function goSection(btn, id) {
      text field so a manual address can still be typed if the feed is down. */
   const addrEl = el('as-address'), acList = el('as-ac-list');
   let acItems = [], acActive = -1, DEALS = [], dealsLoaded = false;
+  const groupCls = window.__ohoGroupCls || (()=>''), groupBadge = window.__ohoGroupBadge || (()=>'');
 
   function acClose(){ acList.classList.remove('show'); acList.innerHTML=''; acItems=[]; acActive=-1; addrEl.setAttribute('aria-expanded','false'); }
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -1432,7 +1444,7 @@ function goSection(btn, id) {
     acItems = rows; acActive = -1;
     if(!rows.length){ acClose(); return; }
     acList.innerHTML = rows.map((r,i)=>
-      '<div class="da-ac-item" role="option" data-i="'+i+'">'+r.main+
+      '<div class="da-ac-item'+(r.cls ? ' '+r.cls : '')+'" role="option" data-i="'+i+'">'+(r.badge||'')+r.main+
       (r.sub ? '<span class="da-ac-sub">'+r.sub+'</span>' : '')+'</div>'
     ).join('');
     acList.classList.add('show'); addrEl.setAttribute('aria-expanded','true');
@@ -1442,7 +1454,6 @@ function goSection(btn, id) {
   }
   function dealSub(d){
     const bits = [];
-    if(d.section) bits.push(esc(d.section));
     if(d.status)  bits.push(esc(d.status));
     if(d.sr)      bits.push('ACQ ' + esc(d.sr));
     if(d.title)   bits.push(esc(d.title));
@@ -1453,7 +1464,7 @@ function goSection(btn, id) {
     return DEALS
       .filter(d => !ql || d.address.toLowerCase().includes(ql) || d.sr.toLowerCase().includes(ql) || d.status.toLowerCase().includes(ql))
       .slice(0, 100)
-      .map(d => ({ main: esc(d.address), sub: dealSub(d), full: d.address, deal: d }));
+      .map(d => ({ main: esc(d.address), sub: dealSub(d), full: d.address, deal: d, cls: groupCls(d), badge: groupBadge(d) }));
   }
   function showList(q){
     const rows = dealRows(q);
@@ -2221,6 +2232,7 @@ function goSection(btn, id) {
   /* === Address = under-contract deal picker (from the deal tracker) === */
   const addrEl = el('aa-address'), acList = el('aa-ac-list');
   let acItems = [], acActive = -1, DEALS = [];
+  const groupCls = window.__ohoGroupCls || (()=>''), groupBadge = window.__ohoGroupBadge || (()=>'');
 
   function acClose(){ acList.classList.remove('show'); acList.innerHTML=''; acItems=[]; acActive=-1; addrEl.setAttribute('aria-expanded','false'); }
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -2228,7 +2240,7 @@ function goSection(btn, id) {
     acItems = rows; acActive = -1;
     if(!rows.length){ acClose(); return; }
     acList.innerHTML = rows.map((r,i)=>
-      '<div class="da-ac-item" role="option" data-i="'+i+'">'+r.main+
+      '<div class="da-ac-item'+(r.cls ? ' '+r.cls : '')+'" role="option" data-i="'+i+'">'+(r.badge||'')+r.main+
       (r.sub ? '<span class="da-ac-sub">'+r.sub+'</span>' : '')+'</div>'
     ).join('');
     acList.classList.add('show'); addrEl.setAttribute('aria-expanded','true');
@@ -2241,7 +2253,7 @@ function goSection(btn, id) {
     const yes = '<span style="color:#2e9e5b;font-weight:700">✓</span>';
     const no  = '<span style="color:var(--coral);font-weight:700">✗</span>';
     const rows = [];
-    const head = [d.section, d.status].filter(Boolean).map(esc).join(' &middot; ');
+    const head = d.status ? esc(d.status) : '';
     if(head) rows.push(head);
     if(d.assigneeLlc || d.signer || d.signingEmail){
       rows.push('Assignee LLC - ' + (d.assigneeLlc ? esc(d.assigneeLlc) : dash));
@@ -2261,7 +2273,7 @@ function goSection(btn, id) {
     return DEALS
       .filter(d => { const a=(d.address||'').toLowerCase(), n=(d.assigneeLlc||'').toLowerCase(), s=(d.signer||'').toLowerCase(); return !ql || a.includes(ql) || n.includes(ql) || s.includes(ql); })
       .slice(0, 100)
-      .map(d => ({ main: esc(d.address), sub: dealSub(d), full: d.address, deal: d }));
+      .map(d => ({ main: esc(d.address), sub: dealSub(d), full: d.address, deal: d, cls: groupCls(d), badge: groupBadge(d) }));
   }
   function showList(q){
     const rows = dealRows(q);
@@ -2334,7 +2346,7 @@ function goSection(btn, id) {
     DEALS = TRACKER.map(function(t){
       const a = ASSIGN[t.key] || {};
       return Object.assign({}, a, {
-        address: t.address, section: t.section, status: t.status, sr: t.sr, title: t.title, coe: t.coe,
+        address: t.address, section: t.section, group: t.group, status: t.status, sr: t.sr, title: t.title, coe: t.coe,
         assigneeLlc: a.assigneeLlc || '', signer: a.signer || '', signingEmail: a.signingEmail || '',
         signer2: a.signer2 || '', signer2Email: a.signer2Email || ''
       });
@@ -2349,7 +2361,11 @@ function goSection(btn, id) {
   };
   if(window.__ohoTrackerDeals){
     window.__ohoTrackerDeals().then(function(list){
-      TRACKER = (list || []).slice().sort(function(a,b){ return streetKey(a.address).localeCompare(streetKey(b.address)); });
+      // Need To Sell first, then Set To Close; alphabetical by street within each group
+      TRACKER = (list || []).slice().sort(function(a,b){
+        const ga = a.group === 'close' ? 1 : 0, gb = b.group === 'close' ? 1 : 0;
+        return (ga - gb) || streetKey(a.address).localeCompare(streetKey(b.address));
+      });
       trackerLoaded = true;
       mergeDeals();
     });
