@@ -935,7 +935,7 @@ body { background: var(--bg); color: var(--text); font-family: "Archivo", sans-s
           <div class="da-field full">
             <label class="da-label" for="as-address">Address <span class="req">*</span></label>
             <div class="da-ac">
-              <input class="da-input" id="as-address" name="address" type="text" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" placeholder="Start typing the property address…">
+              <input class="da-input" id="as-address" name="address" type="text" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" placeholder="Pick a deal from the Deal Tracker — or type an address…">
               <div class="da-ac-list" id="as-ac-list" role="listbox"></div>
             </div>
             <div class="da-err-msg">Enter the property address.</div>
@@ -944,7 +944,7 @@ body { background: var(--bg); color: var(--text); font-family: "Archivo", sans-s
           <div class="da-field">
             <label class="da-label" for="as-title">Title Company <span class="req">*</span><span class="da-hint">pick from list or type your own</span></label>
             <div class="da-ac">
-              <input class="da-input" id="as-title" name="title" type="text" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" placeholder="Company holding escrow">
+              <input class="da-input" id="as-title" name="title" type="text" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" placeholder="Auto-fills from the Deal Tracker — or type it">
               <div class="da-ac-list" id="as-title-list" role="listbox"></div>
             </div>
             <div class="da-err-msg">Enter the title company.</div>
@@ -1286,6 +1286,66 @@ function goSection(btn, id) {
 }
 </script>
 <script>
+/* ===== Deal Tracker address feed (shared by Draft Assignment + Draft Addendum) =====
+   Pulls the DEALS tab from the Deal Tracker sheet through the same Apps Script
+   endpoint Dispo Desk syncs from, and exposes the PROPERTY ADDRESS column as a
+   flat list. Cancelled rows and cancelled/dead sections are dropped so reps only
+   see live deals. Loaded once per page and cached; both forms await it. */
+(function(){
+  const TRACKER_API   = "https://script.google.com/macros/s/AKfycbw5IMD8ULM4pnBrUnhjLadeYIwP0yRNk8iWuap0BiFsDDSmx-9FsiqdbLDzQGob6nTW/exec";
+  const TRACKER_TOKEN = "oho-2026-x7";
+  const SKIP_SECTION  = /cancel|dead|kill|lost|fell\s*through/i;   // sections that never need an assignment/addendum
+  const SELL_SECTION  = /need\s*to\s*sell/i;                         // list these first — they're the ones getting assigned
+
+  // "123 Main St, Cleveland, OH 44102" -> "123 main" (loose key for joining lists)
+  window.__ohoAddrKey = function(s){
+    return String(s||'').toLowerCase().replace(/[.,#]/g,' ')
+      .replace(/\b(street|st|avenue|ave|road|rd|drive|dr|place|pl|lane|ln|court|ct|boulevard|blvd)\b/g,'')
+      .replace(/\s+/g,' ').trim();
+  };
+
+  let promise = null;
+  window.__ohoTrackerDeals = function(){
+    if(promise) return promise;
+    promise = fetch(TRACKER_API + '?token=' + encodeURIComponent(TRACKER_TOKEN), {cache:'no-store'})
+      .then(r => r.json())
+      .then(j => {
+        if(!j || !Array.isArray(j.sections)) throw new Error((j && j.error) || 'bad response');
+        const out = [], seen = new Set();
+        const secs = j.sections.slice().sort((a,b)=>{
+          const as = SELL_SECTION.test(String(a.name||'')) ? 0 : 1, bs = SELL_SECTION.test(String(b.name||'')) ? 0 : 1;
+          return as - bs;
+        });
+        secs.forEach(sec => {
+          const name = String(sec.name||'').trim();
+          if(SKIP_SECTION.test(name)) return;
+          (sec.deals||[]).forEach(row => {
+            const address = String(row.address||'').trim();
+            if(!address || row.cancelled) return;
+            const key = window.__ohoAddrKey(address);
+            if(!key || seen.has(key)) return;
+            seen.add(key);
+            out.push({
+              address,
+              key,
+              section: name,
+              status:  String(row.status||'').trim(),
+              sr:      String(row.sr||'').trim(),
+              title:   String(row.title||'').trim(),
+              coe:     String(row.coe||'').trim(),
+              contract:String(row.contract||'').trim(),
+              row:     row.row
+            });
+          });
+        });
+        return out;
+      })
+      .catch(e => { console.warn('[Dispo] Deal Tracker address feed failed:', e); promise = null; return []; });
+    return promise;
+  };
+})();
+</script>
+<script>
 /* ===== Draft Assignment form — posts to the same Transactions endpoint as contracts ===== */
 (function(){
   /* Same Google Apps Script endpoint the contract (Draft Agreement) form uses,
@@ -1351,11 +1411,16 @@ function goSection(btn, id) {
   }
   add2.addEventListener('change', ()=> setSigner2(add2.checked));
 
-  /* === Address autocomplete (Photon / OpenStreetMap — free, no key) === */
+  /* === Address = Deal Tracker picker (PROPERTY ADDRESS column) ===
+     Lists every live deal on the tracker sheet; typing filters by address,
+     Sr. ACQ, or status. Picking a deal fills the address and the Title Company
+     from the tracker row (both stay editable). Stays a plain
+     text field so a manual address can still be typed if the feed is down. */
   const addrEl = el('as-address'), acList = el('as-ac-list');
-  let acItems = [], acActive = -1, acTimer = null, acSeq = 0;
+  let acItems = [], acActive = -1, DEALS = [], dealsLoaded = false;
 
   function acClose(){ acList.classList.remove('show'); acList.innerHTML=''; acItems=[]; acActive=-1; addrEl.setAttribute('aria-expanded','false'); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
   function acRender(rows){
     acItems = rows; acActive = -1;
     if(!rows.length){ acClose(); return; }
@@ -1368,34 +1433,54 @@ function goSection(btn, id) {
       node.addEventListener('mousedown', e=>{ e.preventDefault(); acChoose(+node.dataset.i); });
     });
   }
+  function dealSub(d){
+    const bits = [];
+    if(d.section) bits.push(esc(d.section));
+    if(d.status)  bits.push(esc(d.status));
+    if(d.sr)      bits.push('ACQ ' + esc(d.sr));
+    if(d.title)   bits.push(esc(d.title));
+    return bits.join(' &middot; ');
+  }
+  function dealRows(q){
+    const ql = (q||'').toLowerCase();
+    return DEALS
+      .filter(d => !ql || d.address.toLowerCase().includes(ql) || d.sr.toLowerCase().includes(ql) || d.status.toLowerCase().includes(ql))
+      .slice(0, 100)
+      .map(d => ({ main: esc(d.address), sub: dealSub(d), full: d.address, deal: d }));
+  }
+  function showList(q){
+    const rows = dealRows(q);
+    if(!rows.length && !dealsLoaded){
+      acItems = []; acActive = -1;
+      acList.innerHTML = '<div class="da-ac-item" style="opacity:.6;cursor:default">Loading deals from the Deal Tracker…</div>';
+      acList.classList.add('show'); addrEl.setAttribute('aria-expanded','true');
+      return;
+    }
+    acRender(rows);
+  }
   function acChoose(i){
     const r = acItems[i]; if(!r) return;
     addrEl.value = r.full;
     addrEl.classList.remove('err'); addrEl.closest('.da-field').classList.remove('show-err');
     acClose();
+    // Title Company auto-populates from the tracker row on every pick. The field
+    // stays a free-text combobox, so the rep can overwrite it (or pick from the
+    // Title Companies list) if the sheet is blank or wrong.
+    const tc = el('as-title');
+    if(r.deal && r.deal.title && tc){
+      tc.value = r.deal.title;
+      tc.classList.remove('err'); const f = tc.closest('.da-field'); if(f) f.classList.remove('show-err');
+    }
   }
-  function viaPhoton(q){
-    const url='https://photon.komoot.io/api/?q='+encodeURIComponent(q)+'&limit=6&lang=en&lat=39.5&lon=-98.35';
-    return fetch(url).then(r=>r.json()).then(j=>(j.features||[])
-      .filter(f=>(f.properties||{}).countrycode==='US')
-      .map(f=>{
-        const p=f.properties||{};
-        const line1=[p.housenumber, p.street||p.name].filter(Boolean).join(' ');
-        const line2=[p.city||p.county, p.state, p.postcode].filter(Boolean).join(', ');
-        const full=[line1||p.name, line2].filter(Boolean).join(', ');
-        return { main: line1||p.name||full, sub: line2, full: full };
-      }).filter(r=>r.full));
+  addrEl.addEventListener('focus', ()=> showList(addrEl.value.trim()));
+  addrEl.addEventListener('click', ()=> showList(addrEl.value.trim()));
+  addrEl.addEventListener('input', ()=> showList(addrEl.value.trim()));
+  if(window.__ohoTrackerDeals){
+    window.__ohoTrackerDeals().then(list => {
+      DEALS = list || []; dealsLoaded = true;
+      if(document.activeElement === addrEl) showList(addrEl.value.trim());
+    });
   }
-  function acSearch(q){
-    const seq = ++acSeq;
-    viaPhoton(q).then(rows=>{ if(seq===acSeq) acRender(rows); }).catch(()=>{ if(seq===acSeq) acClose(); });
-  }
-  addrEl.addEventListener('input', ()=>{
-    const q = addrEl.value.trim();
-    clearTimeout(acTimer);
-    if(q.length < 4){ acClose(); return; }
-    acTimer = setTimeout(()=>acSearch(q), 260);
-  });
   addrEl.addEventListener('keydown', e=>{
     if(!acList.classList.contains('show')) return;
     const items = acList.querySelectorAll('.da-ac-item');
@@ -2097,14 +2182,19 @@ function goSection(btn, id) {
     const dash = '—';
     const yes = '<span style="color:#2e9e5b;font-weight:700">✓</span>';
     const no  = '<span style="color:var(--coral);font-weight:700">✗</span>';
-    const rows = [
-      'Assignee LLC - ' + (d.assigneeLlc ? esc(d.assigneeLlc) : dash),
-      'Assignee - '     + (d.signer      ? esc(d.signer)      : dash),
-      'Email ' + (d.signingEmail ? yes : no)
-    ];
-    if(d.signer2 || d.signer2Email){
-      rows.push('Assignee 2 - ' + (d.signer2 ? esc(d.signer2) : dash));
-      rows.push('Email ' + (d.signer2Email ? yes : no));
+    const rows = [];
+    const head = [d.section, d.status].filter(Boolean).map(esc).join(' &middot; ');
+    if(head) rows.push(head);
+    if(d.assigneeLlc || d.signer || d.signingEmail){
+      rows.push('Assignee LLC - ' + (d.assigneeLlc ? esc(d.assigneeLlc) : dash));
+      rows.push('Assignee - '     + (d.signer      ? esc(d.signer)      : dash));
+      rows.push('Email ' + (d.signingEmail ? yes : no));
+      if(d.signer2 || d.signer2Email){
+        rows.push('Assignee 2 - ' + (d.signer2 ? esc(d.signer2) : dash));
+        rows.push('Email ' + (d.signer2Email ? yes : no));
+      }
+    } else {
+      rows.push('<span style="opacity:.7">No assignment on file yet — fill in the assignee below</span>');
     }
     return rows.join('<br>');
   }
@@ -2115,7 +2205,16 @@ function goSection(btn, id) {
       .slice(0, 100)
       .map(d => ({ main: esc(d.address), sub: dealSub(d), full: d.address, deal: d }));
   }
-  function showList(q){ acRender(dealRows(q)); }
+  function showList(q){
+    const rows = dealRows(q);
+    if(!rows.length && !trackerLoaded){
+      acItems = []; acActive = -1;
+      acList.innerHTML = '<div class="da-ac-item" style="opacity:.6;cursor:default">Loading deals from the Deal Tracker…</div>';
+      acList.classList.add('show'); addrEl.setAttribute('aria-expanded','true');
+      return;
+    }
+    acRender(rows);
+  }
 
   function clearErr(id){ const inp = el(id); if(!inp) return; inp.classList.remove('err'); const f = inp.closest('.da-field'); if(f) f.classList.remove('show-err'); }
   function fillFromDeal(d){
@@ -2165,11 +2264,39 @@ function goSection(btn, id) {
     s = s.replace(/^(n|s|e|w|ne|nw|se|sw|north|south|east|west|northeast|northwest|southeast|southwest)\.?\s+/i, '');
     return s.toLowerCase();
   }
+  /* Two feeds, merged by address:
+       1) Deal Tracker sheet (PROPERTY ADDRESS column) — the list of addresses reps can pick from.
+       2) The addendum Web App's ?list=deals — assignee LLC / signer / email logged
+          when the assignment was drafted, used to auto-fill the fields below.
+     The tracker is the source of truth for WHICH addresses show; the assignee
+     info is an overlay and is simply absent for deals not yet assigned. */
+  let TRACKER = [], ASSIGN = {}, trackerLoaded = false;
+  const addrKey = window.__ohoAddrKey || function(s){ return String(s||'').toLowerCase().replace(/[.,#]/g,' ').replace(/\s+/g,' ').trim(); };
+  function mergeDeals(){
+    DEALS = TRACKER.map(function(t){
+      const a = ASSIGN[t.key] || {};
+      return Object.assign({}, a, {
+        address: t.address, section: t.section, status: t.status, sr: t.sr, title: t.title, coe: t.coe,
+        assigneeLlc: a.assigneeLlc || '', signer: a.signer || '', signingEmail: a.signingEmail || '',
+        signer2: a.signer2 || '', signer2Email: a.signer2Email || ''
+      });
+    });
+    if(document.activeElement === addrEl) showList(addrEl.value.trim());
+  }
   window.__ohoAssigneeDeals = function(list){
-    if(Array.isArray(list)) DEALS = list.slice().sort(function(a,b){ return streetKey(a.address).localeCompare(streetKey(b.address)); });
-    if(document.activeElement === addrEl) showList('');
+    if(!Array.isArray(list)) return;
+    ASSIGN = {};
+    list.forEach(function(d){ const k = addrKey(d && d.address); if(k && !ASSIGN[k]) ASSIGN[k] = d; });
+    mergeDeals();
   };
-  (function loadDeals(){
+  if(window.__ohoTrackerDeals){
+    window.__ohoTrackerDeals().then(function(list){
+      TRACKER = (list || []).slice().sort(function(a,b){ return streetKey(a.address).localeCompare(streetKey(b.address)); });
+      trackerLoaded = true;
+      mergeDeals();
+    });
+  } else { trackerLoaded = true; }
+  (function loadAssignInfo(){
     if(!SCRIPT_URL) return;
     const s = document.createElement('script');
     s.src = SCRIPT_URL + '?list=deals&callback=__ohoAssigneeDeals';
