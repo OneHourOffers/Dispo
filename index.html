@@ -721,6 +721,9 @@ body { background: var(--bg); color: var(--text); font-family: "Archivo", sans-s
 .da-ac-tag { display:inline-block; font-size:9.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--coral); background:rgba(243,138,129,.16); border-radius:999px; padding:1px 7px; margin-left:7px; vertical-align:middle; }
 .da-file-drop { display:flex; align-items:center; gap:10px; padding:14px 16px; border:1.5px dashed var(--border2); border-radius:var(--radius); background:var(--surface2); color:var(--text-muted); font-size:13px; cursor:pointer; transition:border-color .15s, color .15s, background .15s; }
 .da-file-drop:hover { border-color:var(--accent); color:var(--text-sec); }
+.da-src { margin-left:8px; font-size:11px; font-weight:600; color:var(--logo-teal); background:rgba(29,107,138,.10); border:1px solid rgba(29,107,138,.25); border-radius:999px; padding:1px 8px; white-space:nowrap; }
+.da-src[hidden] { display:none; }
+.da-file-drop.dragover, .da-file-chip.dragover { border-color:var(--accent); border-style:solid; background:var(--accent-light); color:var(--navy); box-shadow:0 0 0 3px rgba(30,65,100,.15); }
 .da-file-drop svg { width:20px; height:20px; flex:none; }
 .da-file-chip { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:0; padding:10px 12px; background:var(--accent-light); border:1px solid var(--border2); border-radius:10px; font-size:13px; color:var(--text); }
 .da-file-chip .da-file-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500; }
@@ -942,7 +945,7 @@ body { background: var(--bg); color: var(--text); font-family: "Archivo", sans-s
           </div>
 
           <div class="da-field">
-            <label class="da-label" for="as-title">Title Company <span class="req">*</span><span class="da-hint">pick from list or type your own</span></label>
+            <label class="da-label" for="as-title">Title Company <span class="req">*</span><span class="da-hint">pick from list or type your own</span><span class="da-src" id="as-title-src" hidden>(Per Deal Tracker)</span></label>
             <div class="da-ac">
               <input class="da-input" id="as-title" name="title" type="text" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" placeholder="Auto-fills from the Deal Tracker — or type it">
               <div class="da-ac-list" id="as-title-list" role="listbox"></div>
@@ -950,7 +953,7 @@ body { background: var(--bg); color: var(--text); font-family: "Archivo", sans-s
             <div class="da-err-msg">Enter the title company.</div>
           </div>
           <div class="da-field">
-            <label class="da-label" for="as-coe">COE <span class="req">*</span><span class="da-hint">close of escrow</span></label>
+            <label class="da-label" for="as-coe">COE <span class="req">*</span><span class="da-hint">close of escrow</span><span class="da-src" id="as-coe-src" hidden>(Per Deal Tracker)</span></label>
             <input class="da-input" id="as-coe" name="coe" type="date" autocomplete="off">
             <div class="da-err-msg">Pick a close-of-escrow date.</div>
           </div>
@@ -983,7 +986,7 @@ body { background: var(--bg); color: var(--text); font-family: "Archivo", sans-s
             <input type="file" id="as-contract" accept=".pdf,.doc,.docx,image/*" style="display:none">
             <div class="da-file-drop" id="as-file-drop">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              <span id="as-file-droptext">Click to upload the original purchase contract &mdash; a redacted copy is generated automatically</span>
+              <span id="as-file-droptext">Drag &amp; drop the original purchase contract here, or click to upload &mdash; a redacted copy is generated automatically</span>
             </div>
             <div class="da-file-chip" id="as-file-chip" style="display:none">
               <span class="da-file-name" id="as-file-name"></span>
@@ -1015,6 +1018,8 @@ body { background: var(--bg); color: var(--text); font-family: "Archivo", sans-s
         <input type="hidden" id="as-summary-field" name="_summary">
         <input type="hidden" id="as-subject-field" name="_subject">
         <input type="hidden" id="as-coe-pretty" name="coePretty">
+        <input type="hidden" id="as-title-src-field" name="titleSource">
+        <input type="hidden" id="as-coe-src-field" name="coeSource">
         <input type="hidden" id="as-emd-pretty" name="emdPretty">
         <input type="hidden" id="as-emd-deadline-pretty" name="emdDeadlinePretty">
         <input type="hidden" id="as-price-pretty" name="pricePretty">
@@ -1289,13 +1294,15 @@ function goSection(btn, id) {
 /* ===== Deal Tracker address feed (shared by Draft Assignment + Draft Addendum) =====
    Pulls the DEALS tab from the Deal Tracker sheet through the same Apps Script
    endpoint Dispo Desk syncs from, and exposes the PROPERTY ADDRESS column as a
-   flat list. Cancelled rows and cancelled/dead sections are dropped so reps only
-   see live deals. Loaded once per page and cached; both forms await it. */
+   flat list — but only from the "Need To Sell" and "Set To Close" sections,
+   with cancelled rows dropped, so reps only see deals that are actually in play. Loaded once per page and cached; both forms await it. */
 (function(){
   const TRACKER_API   = "https://script.google.com/macros/s/AKfycbw5IMD8ULM4pnBrUnhjLadeYIwP0yRNk8iWuap0BiFsDDSmx-9FsiqdbLDzQGob6nTW/exec";
   const TRACKER_TOKEN = "oho-2026-x7";
-  const SKIP_SECTION  = /cancel|dead|kill|lost|fell\s*through/i;   // sections that never need an assignment/addendum
-  const SELL_SECTION  = /need\s*to\s*sell/i;                         // list these first — they're the ones getting assigned
+  const SELL_SECTION  = /need\s*to\s*sell/i;   // listed first — these are the ones getting assigned
+  const CLOSE_SECTION = /set\s*to\s*close/i;    // also allowed — addendums / assignment changes on deals headed to close
+  // ONLY these two sections feed the dropdowns; everything else (Legal, Closed, Cancelled, etc.) is left out.
+  const ALLOW_SECTION = name => SELL_SECTION.test(name) || CLOSE_SECTION.test(name);
 
   // "123 Main St, Cleveland, OH 44102" -> "123 main" (loose key for joining lists)
   window.__ohoAddrKey = function(s){
@@ -1318,7 +1325,7 @@ function goSection(btn, id) {
         });
         secs.forEach(sec => {
           const name = String(sec.name||'').trim();
-          if(SKIP_SECTION.test(name)) return;
+          if(!ALLOW_SECTION(name)) return;
           (sec.deals||[]).forEach(row => {
             const address = String(row.address||'').trim();
             if(!address || row.cancelled) return;
@@ -1412,9 +1419,9 @@ function goSection(btn, id) {
   add2.addEventListener('change', ()=> setSigner2(add2.checked));
 
   /* === Address = Deal Tracker picker (PROPERTY ADDRESS column) ===
-     Lists every live deal on the tracker sheet; typing filters by address,
-     Sr. ACQ, or status. Picking a deal fills the address and the Title Company
-     from the tracker row (both stay editable). Stays a plain
+     Lists the tracker's Need To Sell + Set To Close deals; typing filters by address,
+     Sr. ACQ, or status. Picking a deal fills the address, Title Company and COE
+     from the tracker row (all stay editable). Stays a plain
      text field so a manual address can still be typed if the feed is down. */
   const addrEl = el('as-address'), acList = el('as-ac-list');
   let acItems = [], acActive = -1, DEALS = [], dealsLoaded = false;
@@ -1458,6 +1465,30 @@ function goSection(btn, id) {
     }
     acRender(rows);
   }
+  /* "(Per Deal Tracker)" tag — shown on Title Company / COE when the value came
+     from the tracker row, cleared the moment the rep edits the field by hand.
+     The same flag rides along in the TC summary + hidden form fields. */
+  const SRC = {};
+  function setSrc(id, on){
+    SRC[id] = !!on;
+    const tag = el(id + '-src'); if(tag) tag.hidden = !on;
+    const hid = el(id + '-src-field'); if(hid) hid.value = on ? 'Per Deal Tracker' : '';
+  }
+  const srcLabel = id => SRC[id] ? ' (Per Deal Tracker)' : '';
+  ['as-title','as-coe'].forEach(id => {
+    const inp = el(id); if(!inp) return;
+    ['input','change'].forEach(ev => inp.addEventListener(ev, e => { if(e.isTrusted) setSrc(id, false); }));
+  });
+  function trackerDateToIso(v){
+    v = String(v==null?'':v).trim(); if(!v) return '';
+    let m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v);                    // already ISO (or an ISO datetime)
+    if(m) return m[1]+'-'+m[2]+'-'+m[3];
+    m = /^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/.exec(v);   // M/D/YY or M/D/YYYY
+    if(m){ let y = +m[3]; if(y < 100) y += 2000; return y+'-'+String(m[1]).padStart(2,'0')+'-'+String(m[2]).padStart(2,'0'); }
+    const d = new Date(v);                                          // last resort: "Oct 1, 2026", Date.toString(), etc.
+    if(!isNaN(d)) return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    return '';
+  }
   function acChoose(i){
     const r = acItems[i]; if(!r) return;
     addrEl.value = r.full;
@@ -1470,6 +1501,16 @@ function goSection(btn, id) {
     if(r.deal && r.deal.title && tc){
       tc.value = r.deal.title;
       tc.classList.remove('err'); const f = tc.closest('.da-field'); if(f) f.classList.remove('show-err');
+      setSrc('as-title', true);
+    }
+    // COE from the tracker row too (sheet stores M/D/YY or M/D/YYYY; the input needs YYYY-MM-DD).
+    // Still a normal date picker, so the rep can change it if the sheet is off.
+    const coe = el('as-coe'), iso = r.deal ? trackerDateToIso(r.deal.coe) : '';
+    if(coe && iso){
+      coe.value = iso;
+      coe.classList.remove('err'); const f2 = coe.closest('.da-field'); if(f2) f2.classList.remove('show-err');
+      coe.dispatchEvent(new Event('change', {bubbles:true}));
+      setSrc('as-coe', true);
     }
   }
   addrEl.addEventListener('focus', ()=> showList(addrEl.value.trim()));
@@ -1630,20 +1671,36 @@ function goSection(btn, id) {
     }
   }
 
+  async function acceptContract(f){
+    if(!f){ clearContract(); return; }
+    if(f.size > MAX_FILE_MB*1024*1024){
+      clearContract();
+      fileErr.textContent = 'That file is ' + fmtSize(f.size) + ' — max is ' + MAX_FILE_MB + ' MB.';
+      return;
+    }
+    originalFile = f;
+    await processContract();
+  }
   if(fileInput){
-    fileInput.addEventListener('change', async ()=>{
-      const f = fileInput.files && fileInput.files[0];
-      if(!f){ clearContract(); return; }
-      if(f.size > MAX_FILE_MB*1024*1024){
-        clearContract();
-        fileErr.textContent = 'That file is ' + fmtSize(f.size) + ' — max is ' + MAX_FILE_MB + ' MB.';
-        return;
-      }
-      originalFile = f;
-      await processContract();
-    });
+    fileInput.addEventListener('change', ()=> acceptContract(fileInput.files && fileInput.files[0]));
     el('as-file-remove').addEventListener('click', clearContract);
     fileDrop.addEventListener('click', ()=> fileInput.click());
+
+    /* Drag & drop — onto the dashed drop zone, or onto the file chip to swap the
+       file. Drops anywhere else on the form are swallowed so a near-miss doesn't
+       navigate the page away to the PDF. */
+    const dropTargets = [fileDrop, fileChip];
+    const stop = e => { e.preventDefault(); e.stopPropagation(); };
+    dropTargets.forEach(t => {
+      ['dragenter','dragover'].forEach(ev => t.addEventListener(ev, e => { stop(e); e.dataTransfer.dropEffect = 'copy'; t.classList.add('dragover'); }));
+      ['dragleave','dragend'].forEach(ev => t.addEventListener(ev, e => { stop(e); t.classList.remove('dragover'); }));
+      t.addEventListener('drop', e => {
+        stop(e); t.classList.remove('dragover');
+        const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if(f) acceptContract(f);
+      });
+    });
+    ['dragover','drop'].forEach(ev => form.addEventListener(ev, e => { if(!dropTargets.some(t => t.contains(e.target))) e.preventDefault(); }));
   }
 
   function blobToB64(blob){
@@ -1823,8 +1880,8 @@ function goSection(btn, id) {
     lines.push('Assignee LLC - '   + v('as-llc'));
     lines.push('');
     lines.push('Address - '        + v('as-address'));
-    lines.push('Title Company - '  + v('as-title'));
-    lines.push('COE - '            + fmtDate(v('as-coe')));
+    lines.push('Title Company - '  + v('as-title') + srcLabel('as-title'));
+    lines.push('COE - '            + fmtDate(v('as-coe')) + srcLabel('as-coe'));
     lines.push('Earnest Money - '  + (v('as-emd')   ? '$'+v('as-emd')   : ''));
     lines.push('EMD Deadline - '   + fmtDeadline(v('as-emd-deadline'), stateFromAddress()));
     lines.push('Assigned Price - ' + (v('as-price') ? '$'+v('as-price') : ''));
@@ -1918,6 +1975,7 @@ function goSection(btn, id) {
     if(typeof clearContract === 'function') clearContract();
     autoGrow(); updateChips();
     fields.forEach(f=>{ el(f.id).classList.remove('err'); el(f.id).closest('.da-field').classList.remove('show-err'); });
+    setSrc('as-title', false); setSrc('as-coe', false);
     el('as-submit').disabled = false;
     el('as-submit').innerHTML = 'Send to TC &rarr;';
     el('as-status').textContent = '';
