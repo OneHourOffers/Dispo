@@ -1606,8 +1606,9 @@ function goSection(btn, id) {
   const fileNameEl= el('as-file-name');
   const fileErr   = el('as-file-err');
   const MAX_FILE_MB = 15;
-  let originalFile = null;   // raw uploaded File — always emailed as the UNREDACTED copy
-  let redactedBlob = null;   // auto-redacted PDF — emailed alongside when generated
+  let originalFile = null;   // raw uploaded File (kept for re-processing)
+  let unredactedBlob = null; // "UNREDACTED" copy — price/EMD visible, Seller Information block whited out
+  let redactedBlob = null;   // "REDACTED" copy — price, EMD and seller all whited out
   let pickedName = '';       // original filename
   let pickedType = '';       // mime type of the original
   let pickedRedacted = false; // true when a redacted copy was generated
@@ -1615,7 +1616,7 @@ function goSection(btn, id) {
   function fmtSize(b){ return b < 1024*1024 ? (b/1024).toFixed(0)+' KB' : (b/1048576).toFixed(1)+' MB'; }
 
   function clearContract(){
-    originalFile = null; redactedBlob = null; pickedName = ''; pickedType = ''; pickedRedacted = false;
+    originalFile = null; unredactedBlob = null; redactedBlob = null; pickedName = ''; pickedType = ''; pickedRedacted = false;
     if(fileInput) fileInput.value = '';
     el('as-file-data').value = '';
     el('as-file-name-field').value = '';
@@ -1629,17 +1630,18 @@ function goSection(btn, id) {
   /* Auto-redaction: white-box the Purchase Price, EMD, and Seller Point-of-Contact
      block on the standard purchase contract. Coordinates are relative to a 612x792
      (US Letter) page and scaled to the actual page size. */
-  async function redactContractPdf(file){
+  const BOX_PRICE  = { p:0, x:186, yTop:181, w:246, h:18 };   // Purchase Price (page 1)
+  const BOX_EMD    = { p:0, x:184, yTop:202, w:248, h:18 };   // Earnest Money (page 1)
+  const BOX_SELLER = { p:2, x:70,  yTop:615, w:380, h:88 };   // entire Seller Information block — heading, labels & values (page 3)
+  const BOXES_REDACTED   = [BOX_PRICE, BOX_EMD, BOX_SELLER];  // "REDACTED" copy: price, EMD and seller all hidden
+  const BOXES_UNREDACTED = [BOX_SELLER];                      // "UNREDACTED" copy: numbers visible, seller info still hidden
+  async function redactContractPdf(file, BOXES){
+    BOXES = BOXES || BOXES_REDACTED;
     const buf = await file.arrayBuffer();
     const { PDFDocument, rgb } = window.PDFLib;
     const pdfDoc = await PDFDocument.load(buf, { ignoreEncryption: true });
     const pages = pdfDoc.getPages();
     const BASE_W = 612, BASE_H = 792;
-    const BOXES = [
-      { p:0, x:186, yTop:181, w:246, h:18 },   // Purchase Price (page 1)
-      { p:0, x:184, yTop:202, w:248, h:18 },   // Earnest Money (page 1)
-      { p:2, x:70,  yTop:615, w:380, h:88 }     // entire Seller Information block — heading, labels & values (page 3)
-    ];
     for(const b of BOXES){
       const pg = pages[b.p];
       if(!pg) continue;
@@ -1654,31 +1656,69 @@ function goSection(btn, id) {
     return new Blob([bytes], { type: 'application/pdf' });
   }
 
+  /* Is this really a PDF? Trust the bytes, not the browser's guess — a file that
+     arrives by drag & drop (or from Mail/Preview/a cloud drive) can come through
+     with a blank MIME type or no .pdf extension, and then the email would go out
+     as a single generic binary with no redacted copy. */
+  async function sniffPdf(f){
+    try{
+      const head = new Uint8Array(await f.slice(0, 5).arrayBuffer());
+      return String.fromCharCode.apply(null, head) === '%PDF-';
+    }catch(e){ return (f.type === 'application/pdf') || /\.pdf$/i.test(f.name); }
+  }
+  // pdf-lib comes from a CDN; if it hasn't landed yet (slow network) wait for it rather than skipping redaction.
+  function ensurePdfLib(){
+    if(window.PDFLib) return Promise.resolve(true);
+    return new Promise(resolve => {
+      const sc = document.createElement('script');
+      sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js';
+      sc.onload = () => resolve(!!window.PDFLib);
+      sc.onerror = () => resolve(false);
+      document.head.appendChild(sc);
+    });
+  }
   async function processContract(){
     const f = originalFile;
     if(!f) return;
-    pickedName = f.name;
-    pickedType = f.type || 'application/octet-stream';
+    unredactedBlob = null;
     redactedBlob = null;
     pickedRedacted = false;
     fileErr.textContent = '';
     fileDrop.style.display = 'none';
     fileChip.style.display = 'flex';
+    fileNameEl.textContent = f.name + '  ·  checking file…';
 
-    const isPdf = (f.type === 'application/pdf') || /\.pdf$/i.test(f.name);
-    if(isPdf && window.PDFLib){
-      fileNameEl.textContent = f.name + '  ·  building redacted copy…';
+    const isPdf = await sniffPdf(f);
+    if(originalFile !== f) return;   // a different file was picked while we were reading
+    if(isPdf){
+      // normalise what the backend sees so both copies land as .pdf attachments
+      pickedType = 'application/pdf';
+      pickedName = /\.pdf$/i.test(f.name) ? f.name : f.name.replace(/\.[^.]*$/, '') + '.pdf';
+    } else {
+      pickedName = f.name;
+      pickedType = f.type || 'application/octet-stream';
+    }
+
+    if(isPdf){
+      fileNameEl.textContent = pickedName + '  ·  building redacted copy…';
+      const haveLib = await ensurePdfLib();
+      if(originalFile !== f) return;
       try {
-        redactedBlob = await redactContractPdf(f);
+        if(!haveLib) throw new Error('pdf-lib not loaded');
+        unredactedBlob = await redactContractPdf(f, BOXES_UNREDACTED);   // seller info hidden, numbers shown
+        redactedBlob   = await redactContractPdf(f, BOXES_REDACTED);     // seller info + numbers hidden
         pickedRedacted = true;
-        fileNameEl.innerHTML = escAttr(f.name) + '  ·  ' + fmtSize(f.size) +
-          '  <span style="color:var(--coral);font-weight:600;">· unredacted + redacted copies will be emailed</span>';
+        fileNameEl.innerHTML = escAttr(pickedName) + '  ·  ' + fmtSize(f.size) +
+          '  <span style="color:var(--coral);font-weight:600;">· unredacted (seller info hidden) + redacted copies will be emailed</span>';
       } catch(err){
-        fileNameEl.textContent = f.name + '  ·  ' + fmtSize(f.size) + '  ·  could not auto-redact — sending unredacted only';
+        console.warn('[Dispo] redaction failed:', err);
+        fileNameEl.textContent = pickedName + '  ·  ' + fmtSize(f.size);
+        unredactedBlob = null; redactedBlob = null;
+        fileErr.textContent = 'Could not process the PDF (' + (err && err.message ? err.message : 'unknown error') + '). The file will be emailed exactly as uploaded — seller info NOT hidden, no redacted copy. Remove and re-add to retry.';
       }
     } else {
-      const note = isPdf ? '' : '  ·  not a PDF — sending as-is (no redacted copy)';
-      fileNameEl.textContent = f.name + '  ·  ' + fmtSize(f.size) + note;
+      fileNameEl.textContent = pickedName + '  ·  ' + fmtSize(f.size);
+      fileErr.textContent = 'That file isn\'t a PDF — it will be emailed as-is with no redacted copy. Upload the PDF of the signed agreement to get both copies.';
     }
   }
 
@@ -1729,7 +1769,7 @@ function goSection(btn, id) {
 
   async function readContractB64(){
     if(!originalFile) return false;
-    el('as-file-data').value       = await blobToB64(originalFile);
+    el('as-file-data').value       = await blobToB64(unredactedBlob || originalFile);   // seller-hidden copy when we could build it
     el('as-file-name-field').value = pickedName || 'contract';
     el('as-file-type').value       = pickedType || 'application/octet-stream';
     el('as-file-data-red').value   = redactedBlob ? await blobToB64(redactedBlob) : '';
